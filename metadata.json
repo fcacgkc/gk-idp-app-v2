@@ -1,0 +1,5 @@
+{
+  "name": "GK IDP Manager",
+  "description": "ジュニアユース・ユースGK向け個人育成計画（IDP）管理システム。面談シートと評価シートを統合し、成長を可視化します。",
+  "requestFramePermissions": []
+}
