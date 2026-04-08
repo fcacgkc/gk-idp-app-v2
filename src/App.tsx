@@ -116,6 +116,7 @@ const Login = ({ onLogin }: { onLogin: () => void }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // パスワード設定: 環境変数 VITE_COACH_PASSWORD が設定されていない場合は 'coach' がデフォルトになります
     const coachPassword = (import.meta.env.VITE_COACH_PASSWORD || 'coach').trim();
     
     // Debug log
