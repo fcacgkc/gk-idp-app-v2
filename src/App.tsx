@@ -22,9 +22,9 @@ import {
   LogOut,
   Eye,
   EyeOff,
-  Cloud,
-  RefreshCw,
-  CheckCircle2
+  Database,
+  Upload,
+  Save
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -1989,10 +1989,6 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('coach_auth') === 'true';
   });
-  const [isGoogleAuth, setIsGoogleAuth] = useState(false);
-  const [spreadsheetId, setSpreadsheetId] = useState(() => localStorage.getItem('gk_spreadsheet_id') || '');
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSync, setLastSync] = useState<string | null>(null);
 
   const [selectedPlayerId, setSelectedPlayerId] = useState(INITIAL_PLAYERS[0].id);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'profile' | 'goals' | 'eval' | 'match-stats' | 'test-results' | 'report'>('dashboard');
@@ -2079,79 +2075,39 @@ export default function App() {
     localStorage.setItem('gk_idp_data', JSON.stringify(allData));
   }, [allData]);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/status');
-        const data = await res.json();
-        setIsGoogleAuth(data.isAuthenticated);
-      } catch (e) {
-        console.error("Auth check failed", e);
-      }
-    };
-    checkAuth();
-
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
-        setIsGoogleAuth(true);
-        handleSync();
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  const handleSync = async () => {
-    if (!isGoogleAuth) {
-      try {
-        const res = await fetch('/api/auth/url');
-        const { url } = await res.json();
-        window.open(url, 'google_oauth', 'width=600,height=700');
-      } catch (e) {
-        alert('認証URLの取得に失敗しました');
-      }
-      return;
-    }
-
-    setIsSyncing(true);
-    try {
-      const res = await fetch('/api/sheets/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: allData, spreadsheetId }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        setSpreadsheetId(result.spreadsheetId);
-        localStorage.setItem('gk_spreadsheet_id', result.spreadsheetId);
-        setLastSync(new Date().toLocaleTimeString());
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (e) {
-      alert('同期に失敗しました: ' + (e instanceof Error ? e.message : 'Unknown error'));
-    } finally {
-      setIsSyncing(false);
-    }
+  const handleExportData = () => {
+    const dataStr = JSON.stringify(allData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const date = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.download = `gk_idp_backup_${date}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  const handleLoadFromSheets = async () => {
-    if (!spreadsheetId) return;
-    setIsSyncing(true);
-    try {
-      const res = await fetch(`/api/sheets/load?spreadsheetId=${spreadsheetId}`);
-      const result = await res.json();
-      if (result.data) {
-        setAllData(result.data);
-        alert('Googleスプレッドシートからデータを読み込みました');
-      } else {
-        alert('データが見つかりませんでした');
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (confirm('データを復元しますか？現在のデータは上書きされます。')) {
+          setAllData(json);
+          alert('データを復元しました。');
+        }
+      } catch (err) {
+        alert('ファイルの読み込みに失敗しました。正しい形式のJSONファイルを選択してください。');
       }
-    } catch (e) {
-      alert('読み込みに失敗しました');
-    } finally {
-      setIsSyncing(false);
-    }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
   };
 
   const currentPlayer = INITIAL_PLAYERS.find(p => p.id === selectedPlayerId)!;
@@ -2247,33 +2203,27 @@ export default function App() {
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100">
-              <div className="text-right">
-                <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Cloud Sync</div>
-                <div className="text-xs font-bold text-zinc-600">
-                  {isSyncing ? '同期中...' : (lastSync ? `${lastSync} 同期済` : (isGoogleAuth ? '認証済み' : '未連携'))}
-                </div>
+            <div className="flex items-center gap-2 px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100">
+              <div className="text-right mr-2">
+                <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Local Backup</div>
+                <div className="text-xs font-bold text-zinc-600">データ管理</div>
               </div>
               <button 
-                onClick={handleSync}
-                disabled={isSyncing}
-                className={cn(
-                  "p-2 rounded-lg transition-all",
-                  isGoogleAuth ? "bg-emerald-100 text-emerald-600 hover:bg-emerald-200" : "bg-zinc-200 text-zinc-500 hover:bg-zinc-300"
-                )}
-                title={isGoogleAuth ? "今すぐ同期" : "Googleスプレッドシートと連携"}
+                onClick={handleExportData}
+                className="p-2 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 transition-all"
+                title="データをPCに保存（書き出し）"
               >
-                {isSyncing ? <RefreshCw size={18} className="animate-spin" /> : <Cloud size={18} />}
+                <Save size={18} />
               </button>
-              {spreadsheetId && !isSyncing && (
-                <button 
-                  onClick={handleLoadFromSheets}
-                  className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
-                  title="スプレッドシートから読み込み"
-                >
-                  <Download size={18} />
-                </button>
-              )}
+              <label className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all cursor-pointer" title="データを復元（読み込み）">
+                <Upload size={18} />
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  onChange={handleImportData} 
+                  className="hidden" 
+                />
+              </label>
             </div>
             <div className="w-10 h-10 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center font-bold text-zinc-400">
               GK
