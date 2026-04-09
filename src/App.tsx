@@ -442,21 +442,45 @@ const Sidebar = ({
   selectedId, 
   onSelect,
   onAddPlayer,
-  onDeletePlayer
+  onDeletePlayer,
+  onExport,
+  onImport
 }: { 
   players: Player[], 
   selectedId: string, 
   onSelect: (id: string) => void,
   onAddPlayer: () => void,
-  onDeletePlayer: (id: string) => void
+  onDeletePlayer: (id: string) => void,
+  onExport: () => void,
+  onImport: (e: React.ChangeEvent<HTMLInputElement>) => void
 }) => (
   <div className="w-64 bg-zinc-900 text-zinc-100 h-screen flex flex-col border-r border-zinc-800 shrink-0">
     <div className="p-6 border-b border-zinc-800">
-      <h1 className="text-xl font-bold flex items-center gap-2">
-        <Award className="text-emerald-500" />
-        GK IDP Hub
-      </h1>
-      <p className="text-xs text-zinc-500 mt-1">Junior Youth / Youth GK</p>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <Award className="text-emerald-500" />
+          GK IDP Hub
+        </h1>
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={onExport}
+            className="p-1.5 text-zinc-500 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all"
+            title="データを書き出し"
+          >
+            <Save size={16} />
+          </button>
+          <label className="p-1.5 text-zinc-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all cursor-pointer" title="データを読み込み">
+            <Upload size={16} />
+            <input 
+              type="file" 
+              accept=".json" 
+              onChange={onImport} 
+              className="hidden" 
+            />
+          </label>
+        </div>
+      </div>
+      <p className="text-xs text-zinc-500">Junior Youth / Youth GK</p>
     </div>
     <div className="flex-1 overflow-y-auto p-4 space-y-2">
       <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-2 mb-2">Players</div>
@@ -2471,6 +2495,8 @@ export default function App() {
         onSelect={setSelectedPlayerId} 
         onAddPlayer={() => setIsAddModalOpen(true)}
         onDeletePlayer={(id) => setPlayerToDeleteId(id)}
+        onExport={handleExportData}
+        onImport={handleImportData}
       />
       
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
@@ -2508,28 +2534,6 @@ export default function App() {
             )}
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100">
-              <div className="text-right mr-2">
-                <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Local Backup</div>
-                <div className="text-xs font-bold text-zinc-600">データ管理</div>
-              </div>
-              <button 
-                onClick={handleExportData}
-                className="p-2 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 transition-all"
-                title="データをPCに保存（書き出し）"
-              >
-                <Save size={18} />
-              </button>
-              <label className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all cursor-pointer" title="データを復元（読み込み）">
-                <Upload size={18} />
-                <input 
-                  type="file" 
-                  accept=".json" 
-                  onChange={handleImportData} 
-                  className="hidden" 
-                />
-              </label>
-            </div>
             <div className="w-10 h-10 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center font-bold text-zinc-400">
               GK
             </div>
