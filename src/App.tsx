@@ -35,8 +35,8 @@ import {
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-import { Player, PlayerData, Category, Evaluation, MatchStats, TestResults, PlayerProfile } from './types';
-import { CATEGORIES, EVAL_ITEMS, PERIODS, SCORE_LABELS, EVAL_CRITERIA } from './constants';
+import { Player, PlayerData, Category, Evaluation, MatchStats, TestResults, PlayerProfile, IDPGoals } from './types';
+import { CATEGORIES, EVAL_ITEMS, PERIODS, GRADES, SCORE_LABELS, EVAL_CRITERIA } from './constants';
 import { exportToPDF } from './lib/pdfExport';
 
 function cn(...inputs: ClassValue[]) {
@@ -97,11 +97,13 @@ const INITIAL_PLAYERS: Player[] = [
   return gradeToNum(b.grade) - gradeToNum(a.grade); // Higher grade first
 });
 
-const DEFAULT_GOALS = {
+const DEFAULT_GOALS: IDPGoals = {
   graduationGoal: 'Jリーグで活躍する、圧倒的な守備範囲を持つGK',
-  period1: { performanceGoal: '県大会ベスト4進出', processGoal: 'シュートストップ率80%以上', metrics: 'セービング成功率', interviewDate: '2025-04-10', review: '' },
-  period2: { performanceGoal: 'リーグ戦全試合出場', processGoal: 'コーチングの質の向上', metrics: '無失点試合数', interviewDate: '2025-08-15', review: '' },
-  period3: { performanceGoal: 'プロ下部組織への昇格内定', processGoal: 'ビルドアップの起点となる', metrics: 'パス成功率', interviewDate: '2025-12-20', review: '' },
+  periods: {
+    '高校2年生_4-7月': { performanceGoal: '県大会ベスト4進出', processGoal: 'シュートストップ率80%以上', metrics: 'セービング成功率', interviewDate: '2025-04-10', review: '' },
+    '高校2年生_8-11月': { performanceGoal: 'リーグ戦全試合出場', processGoal: 'コーチングの質の向上', metrics: '無失点試合数', interviewDate: '2025-08-15', review: '' },
+    '高校2年生_12-3月': { performanceGoal: 'プロ下部組織への昇格内定', processGoal: 'ビルドアップの起点となる', metrics: 'パス成功率', interviewDate: '2025-12-20', review: '' },
+  }
 };
 
 const DEFAULT_PROFILE: PlayerProfile = {
@@ -548,22 +550,47 @@ const Dashboard = ({ data }: { data: PlayerData }) => {
   
   const radarData = CATEGORIES.map(cat => {
     const items = EVAL_ITEMS[cat] || [];
-    const scores = items.map(item => latestEval?.scores?.[item] || 0);
+    const scores = items.map(item => latestEval?.scores?.[item] || 0) as number[];
     const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
     return { subject: CATEGORY_LABELS[cat], A: avg, fullMark: 10 };
   });
 
-  const trendData = PERIODS.map(period => {
-    const evalForPeriod = evaluations.find(e => e.period === period);
-    const result: any = { name: period };
-    CATEGORIES.forEach(cat => {
-      const items = EVAL_ITEMS[cat] || [];
-      const scores = items.map(item => evalForPeriod?.scores?.[item] || 0);
-      const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-      result[cat] = parseFloat(avg.toFixed(1));
+  const trendData = useMemo(() => {
+    const allPeriods: any[] = [];
+    GRADES.forEach(grade => {
+      PERIODS.forEach(period => {
+        const key = `${grade}_${period}`;
+        const evalForPeriod = evaluations.find(e => e.period === key) || 
+                              (grade === data.profile?.grade ? evaluations.find(e => e.period === period) : null);
+        
+        if (evalForPeriod) {
+          const result: any = { name: `${grade.replace('年生', '')} ${period}` };
+          CATEGORIES.forEach(cat => {
+            const items = EVAL_ITEMS[cat] || [];
+            const scores = items.map(item => evalForPeriod?.scores?.[item] || 0) as number[];
+            const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+            result[cat] = parseFloat(avg.toFixed(1));
+          });
+          allPeriods.push(result);
+        }
+      });
     });
-    return result;
-  });
+    return allPeriods;
+  }, [evaluations, data.profile?.grade]);
+
+  const currentGradeGoals = useMemo(() => {
+    const grade = data.profile?.grade || '';
+    return PERIODS.map(p => {
+      const key = `${grade}_${p}`;
+      let gData = data.goals?.periods?.[key];
+      if (!gData && grade === data.profile?.grade) {
+        if (p === '4-7月') gData = data.goals?.period1;
+        if (p === '8-11月') gData = data.goals?.period2;
+        if (p === '12-3月') gData = data.goals?.period3;
+      }
+      return { label: p, goal: gData?.performanceGoal };
+    });
+  }, [data.goals, data.profile?.grade]);
 
   return (
     <div className="space-y-6">
@@ -614,13 +641,13 @@ const Dashboard = ({ data }: { data: PlayerData }) => {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
             <TrendingUp className="text-emerald-600" size={20} />
-            カテゴリ別推移
+            成長推移 (3年間)
           </h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
-                <XAxis dataKey="name" tick={{ fill: '#71717a', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 10]} tick={{ fill: '#71717a', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <Tooltip 
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
@@ -645,18 +672,14 @@ const Dashboard = ({ data }: { data: PlayerData }) => {
       </div>
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
-        <h3 className="text-lg font-bold mb-4">目標ステータス</h3>
+        <h3 className="text-lg font-bold mb-4">目標ステータス ({data.profile?.grade})</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { label: '4-7月', goal: data.goals?.period1?.performanceGoal, status: '進行中', color: 'bg-emerald-50 text-emerald-700' },
-            { label: '8-11月', goal: data.goals?.period2?.performanceGoal, status: '未着手', color: 'bg-zinc-50 text-zinc-600' },
-            { label: '12-3月', goal: data.goals?.period3?.performanceGoal, status: '未着手', color: 'bg-zinc-50 text-zinc-600' },
-          ].map((item, i) => (
+          {currentGradeGoals.map((item, i) => (
             <div key={i} className="p-4 rounded-xl border border-zinc-100 hover:border-emerald-200 transition-colors">
               <div className="flex justify-between items-start mb-2">
                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{item.label}</span>
-                <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold uppercase", item.color)}>
-                  {item.status}
+                <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold uppercase", item.goal ? "bg-emerald-50 text-emerald-700" : "bg-zinc-50 text-zinc-600")}>
+                  {item.goal ? '進行中' : '未着手'}
                 </span>
               </div>
               <p className="font-bold text-zinc-800">{item.goal || '-'}</p>
@@ -815,44 +838,78 @@ const ProfileSection = ({ profile, onSave }: { profile: PlayerProfile, onSave: (
   );
 };
 
-const GoalForm = ({ goals, onSave }: { goals: any, onSave: (goals: any) => void }) => {
-  const [formData, setFormData] = useState(goals || DEFAULT_GOALS);
+const GoalForm = ({ goals, profile, onSave }: { goals: IDPGoals, profile: PlayerProfile, onSave: (goals: IDPGoals) => void }) => {
+  const [selectedGrade, setSelectedGrade] = useState(profile.grade || GRADES[3]);
+  const [formData, setFormData] = useState<IDPGoals>(goals || { graduationGoal: '', periods: {} });
 
   useEffect(() => {
-    setFormData(goals || DEFAULT_GOALS);
+    setFormData(goals || { graduationGoal: '', periods: {} });
   }, [goals]);
 
-  if (!formData) return null;
-
-  const updateField = (key: string, field: string, value: string) => {
+  const updateField = (period: string, field: string, value: string) => {
+    const key = `${selectedGrade}_${period}`;
     setFormData((prev: any) => ({
       ...prev,
-      [key]: {
-        ...(prev[key] || {}),
-        [field]: value
+      periods: {
+        ...(prev.periods || {}),
+        [key]: {
+          ...(prev.periods?.[key] || {}),
+          [field]: value
+        }
       }
     }));
   };
 
+  const getPeriodData = (period: string) => {
+    const key = `${selectedGrade}_${period}`;
+    // Legacy fallback
+    if (!formData.periods?.[key]) {
+      if (selectedGrade === profile.grade) {
+        if (period === '4-7月') return formData.period1 || {};
+        if (period === '8-11月') return formData.period2 || {};
+        if (period === '12-3月') return formData.period3 || {};
+      }
+    }
+    return formData.periods?.[key] || {};
+  };
+
   return (
     <div className="bg-white p-8 rounded-2xl shadow-sm border border-zinc-100 max-w-4xl mx-auto" id="interview-sheet">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
             <Target size={24} />
           </div>
           <div>
             <h2 className="text-2xl font-bold text-zinc-900">面談シート (IDP)</h2>
-            <p className="text-zinc-500">選手の理想像と各フェーズの目標・振り返りを管理します</p>
+            <p className="text-zinc-500">3年間の成長記録を管理します</p>
           </div>
         </div>
-        <button 
-          onClick={() => exportToPDF('interview-sheet', '面談シート')}
-          className="p-2 bg-zinc-100 text-zinc-600 rounded-xl hover:bg-zinc-200 transition-all flex items-center gap-2 text-sm font-bold"
-        >
-          <Download size={18} />
-          PDF出力
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => exportToPDF('interview-sheet', `面談シート_${selectedGrade}`)}
+            className="p-2 bg-zinc-100 text-zinc-600 rounded-xl hover:bg-zinc-200 transition-all flex items-center gap-2 text-sm font-bold"
+          >
+            <Download size={18} />
+            PDF出力
+          </button>
+        </div>
+      </div>
+
+      {/* Grade Selector */}
+      <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+        {GRADES.map(g => (
+          <button
+            key={g}
+            onClick={() => setSelectedGrade(g)}
+            className={cn(
+              "px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
+              selectedGrade === g ? "bg-zinc-900 text-white shadow-lg" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+            )}
+          >
+            {g}
+          </button>
+        ))}
       </div>
 
       <div className="space-y-8">
@@ -867,76 +924,79 @@ const GoalForm = ({ goals, onSave }: { goals: any, onSave: (goals: any) => void 
               value={formData.graduationGoal || ''}
               onChange={e => setFormData({...formData, graduationGoal: e.target.value})}
               className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none h-24"
+              placeholder="例: プロクラブで活躍する、圧倒的な守備範囲を持つGK"
             />
           </div>
         </section>
 
-        {[
-          { key: 'period1', label: '4-7月' },
-          { key: 'period2', label: '8-11月' },
-          { key: 'period3', label: '12-3月' }
-        ].map(({ key, label }) => (
-          <section key={key} className="p-6 border border-zinc-100 rounded-2xl">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black text-zinc-900">{label}</h3>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">面談日</label>
-                <input 
-                  type="date"
-                  value={formData[key]?.interviewDate || ''}
-                  onChange={e => updateField(key, 'interviewDate', e.target.value)}
-                  className="p-2 rounded-lg border border-zinc-200 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">パフォーマンス目標</label>
-                <textarea 
-                  value={formData[key]?.performanceGoal || ''}
-                  onChange={e => updateField(key, 'performanceGoal', e.target.value)}
-                  className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none h-20"
-                  placeholder="具体的な成果目標を記入"
-                />
+        {PERIODS.map((label) => {
+          const pData = getPeriodData(label);
+          return (
+            <section key={label} className="p-6 border border-zinc-100 rounded-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-black text-zinc-900">
+                  <span className="text-sm font-bold text-zinc-400 block mb-1">{selectedGrade}</span>
+                  {label}
+                </h3>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">面談日</label>
+                  <input 
+                    type="date"
+                    value={pData.interviewDate || ''}
+                    onChange={e => updateField(label, 'interviewDate', e.target.value)}
+                    className="p-2 rounded-lg border border-zinc-200 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">数値目標 (パフォーマンス目標に付随)</label>
-                <input 
-                  type="text"
-                  value={formData[key]?.metrics || ''}
-                  onChange={e => updateField(key, 'metrics', e.target.value)}
-                  className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
-                  placeholder="例: セーブ率80%以上"
-                />
-              </div>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">パフォーマンス目標</label>
+                  <textarea 
+                    value={pData.performanceGoal || ''}
+                    onChange={e => updateField(label, 'performanceGoal', e.target.value)}
+                    className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none h-20"
+                    placeholder="具体的な成果目標を記入"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">プロセス目標</label>
-                <textarea 
-                  value={formData[key]?.processGoal || ''}
-                  onChange={e => updateField(key, 'processGoal', e.target.value)}
-                  className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none h-24"
-                  placeholder="目標達成のための具体的な行動"
-                />
-              </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">数値目標 (パフォーマンス目標に付随)</label>
+                  <input 
+                    type="text"
+                    value={pData.metrics || ''}
+                    onChange={e => updateField(label, 'metrics', e.target.value)}
+                    className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    placeholder="例: セーブ率80%以上"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-2">
-                  <MessageSquare size={14} />
-                  振り返り
-                </label>
-                <textarea 
-                  value={formData[key]?.review || ''}
-                  onChange={e => updateField(key, 'review', e.target.value)}
-                  className="w-full p-3 rounded-xl border border-emerald-100 focus:ring-2 focus:ring-emerald-500 outline-none h-24 bg-emerald-50/30"
-                  placeholder="この期間の取り組みを振り返ってください"
-                />
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">プロセス目標</label>
+                  <textarea 
+                    value={pData.processGoal || ''}
+                    onChange={e => updateField(label, 'processGoal', e.target.value)}
+                    className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none h-24"
+                    placeholder="目標達成のための具体的な行動"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-2">
+                    <MessageSquare size={14} />
+                    振り返り
+                  </label>
+                  <textarea 
+                    value={pData.review || ''}
+                    onChange={e => updateField(label, 'review', e.target.value)}
+                    className="w-full p-3 rounded-xl border border-emerald-100 focus:ring-2 focus:ring-emerald-500 outline-none h-24 bg-emerald-50/30"
+                    placeholder="この期間の取り組みを振り返ってください"
+                  />
+                </div>
               </div>
-            </div>
-          </section>
-        ))}
+            </section>
+          );
+        })}
 
         <div className="flex justify-end">
           <SaveButton 
@@ -1694,32 +1754,41 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
 };
 
 const EvaluationForm = ({ data, onSave }: { data: PlayerData, onSave: (evals: Evaluation[]) => void }) => {
+  const [selectedGrade, setSelectedGrade] = useState(data.profile?.grade || GRADES[3]);
   const [selectedPeriod, setSelectedPeriod] = useState(PERIODS[0]);
   const [selectedCategory, setSelectedCategory] = useState<Category>('Technical');
   
-  const currentEval = data.evaluations.find(e => e.period === selectedPeriod) || {
-    period: selectedPeriod,
-    scores: {},
-    feedback: '',
-    videoUrl: ''
+  const currentPeriodKey = `${selectedGrade}_${selectedPeriod}`;
+  
+  const getEvalForPeriod = (grade: string, period: string) => {
+    const key = `${grade}_${period}`;
+    let ev = data.evaluations.find(e => e.period === key);
+    
+    // Legacy fallback
+    if (!ev && grade === data.profile?.grade) {
+      ev = data.evaluations.find(e => e.period === period);
+    }
+    
+    return ev || {
+      period: key,
+      scores: {},
+      feedback: '',
+      videoUrl: ''
+    };
   };
+
+  const currentEval = getEvalForPeriod(selectedGrade, selectedPeriod);
 
   const [scores, setScores] = useState<Record<string, number>>(currentEval.scores);
   const [feedback, setFeedback] = useState(currentEval.feedback || '');
   const [videoUrl, setVideoUrl] = useState(currentEval.videoUrl || '');
 
   useEffect(() => {
-    const ev = data.evaluations.find(e => e.period === selectedPeriod);
-    if (ev) {
-      setScores(ev.scores);
-      setFeedback(ev.feedback || '');
-      setVideoUrl(ev.videoUrl || '');
-    } else {
-      setScores({});
-      setFeedback('');
-      setVideoUrl('');
-    }
-  }, [selectedPeriod, data.evaluations]);
+    const ev = getEvalForPeriod(selectedGrade, selectedPeriod);
+    setScores(ev.scores);
+    setFeedback(ev.feedback || '');
+    setVideoUrl(ev.videoUrl || '');
+  }, [selectedGrade, selectedPeriod, data.evaluations]);
 
   const handleScoreChange = (item: string, val: number) => {
     setScores(prev => ({ ...prev, [item]: val }));
@@ -1727,8 +1796,8 @@ const EvaluationForm = ({ data, onSave }: { data: PlayerData, onSave: (evals: Ev
 
   const handleSave = () => {
     const newEvals = [...data.evaluations];
-    const idx = newEvals.findIndex(e => e.period === selectedPeriod);
-    const updatedEval = { ...currentEval, period: selectedPeriod, scores, feedback, videoUrl };
+    const idx = newEvals.findIndex(e => e.period === currentPeriodKey);
+    const updatedEval = { ...currentEval, period: currentPeriodKey, scores, feedback, videoUrl };
     
     if (idx >= 0) {
       newEvals[idx] = updatedEval;
@@ -1740,28 +1809,53 @@ const EvaluationForm = ({ data, onSave }: { data: PlayerData, onSave: (evals: Ev
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto" id="evaluation-sheet">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-zinc-100 flex gap-2 overflow-x-auto flex-1">
-          {PERIODS.map(p => (
+      <div className="flex flex-col gap-4">
+        {/* Grade Selector */}
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {GRADES.map(g => (
             <button
-              key={p}
-              onClick={() => setSelectedPeriod(p)}
+              key={g}
+              onClick={() => setSelectedGrade(g)}
               className={cn(
-                "px-6 py-2 rounded-xl font-bold transition-all whitespace-nowrap",
-                selectedPeriod === p ? "bg-emerald-600 text-white shadow-md" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+                "px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
+                selectedGrade === g ? "bg-zinc-900 text-white shadow-lg" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
               )}
             >
-              {p}
+              {g}
             </button>
           ))}
         </div>
-        <button 
-          onClick={() => exportToPDF('evaluation-sheet', `評価シート_${selectedPeriod}`)}
-          className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 transition-all flex items-center gap-2 shadow-lg shadow-zinc-900/10"
-        >
-          <Download size={20} />
-          PDF出力
-        </button>
+
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-zinc-100 flex gap-2 overflow-x-auto flex-1">
+            {PERIODS.map(p => (
+              <button
+                key={p}
+                onClick={() => setSelectedPeriod(p)}
+                className={cn(
+                  "px-6 py-2 rounded-xl font-bold transition-all whitespace-nowrap",
+                  selectedPeriod === p ? "bg-emerald-600 text-white shadow-md" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+                )}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <SaveButton 
+              onClick={handleSave}
+              label="保存する"
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg shadow-emerald-900/20"
+            />
+            <button 
+              onClick={() => exportToPDF('evaluation-sheet', `評価シート_${selectedGrade}_${selectedPeriod}`)}
+              className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 transition-all flex items-center gap-2 shadow-lg shadow-zinc-900/10"
+            >
+              <Download size={20} />
+              PDF出力
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -1893,8 +1987,29 @@ const EvaluationForm = ({ data, onSave }: { data: PlayerData, onSave: (evals: Ev
 };
 
 const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
+  const [selectedGrade, setSelectedGrade] = useState(data.profile?.grade || GRADES[3]);
   const [selectedPeriod, setSelectedPeriod] = useState(PERIODS[0]);
-  const currentEval = data.evaluations?.find(e => e.period === selectedPeriod);
+  
+  const currentPeriodKey = `${selectedGrade}_${selectedPeriod}`;
+  
+  const currentEval = useMemo(() => {
+    let ev = data.evaluations?.find(e => e.period === currentPeriodKey);
+    if (!ev && selectedGrade === data.profile?.grade) {
+      ev = data.evaluations?.find(e => e.period === selectedPeriod);
+    }
+    return ev;
+  }, [selectedGrade, selectedPeriod, data.evaluations]);
+
+  const getGoalData = (period: string) => {
+    const key = `${selectedGrade}_${period}`;
+    let gData = data.goals?.periods?.[key];
+    if (!gData && selectedGrade === data.profile?.grade) {
+      if (period === '4-7月') gData = data.goals?.period1;
+      if (period === '8-11月') gData = data.goals?.period2;
+      if (period === '12-3月') gData = data.goals?.period3;
+    }
+    return gData;
+  };
 
   const calculateAvg = (nums: number[] = []) => {
     if (!Array.isArray(nums)) return 0;
@@ -1961,35 +2076,58 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20">
-      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-zinc-100">
-        <div className="flex gap-2">
-          {PERIODS.map(p => (
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-zinc-100 space-y-4">
+        {/* Grade Selector */}
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {GRADES.map(g => (
             <button
-              key={p}
-              onClick={() => setSelectedPeriod(p)}
+              key={g}
+              onClick={() => setSelectedGrade(g)}
               className={cn(
-                "px-4 py-2 rounded-xl text-sm font-bold transition-all",
-                selectedPeriod === p ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-500"
+                "px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
+                selectedGrade === g ? "bg-zinc-900 text-white shadow-lg" : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
               )}
             >
-              {p}
+              {g}
             </button>
           ))}
         </div>
-        <button className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold flex items-center gap-2">
-          <FileText size={16} />
-          PDF出力
-        </button>
+
+        <div className="flex justify-between items-center">
+          <div className="flex gap-2">
+            {PERIODS.map(p => (
+              <button
+                key={p}
+                onClick={() => setSelectedPeriod(p)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-bold transition-all",
+                  selectedPeriod === p ? "bg-emerald-600 text-white" : "bg-zinc-100 text-zinc-500"
+                )}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          <button 
+            onClick={() => exportToPDF('report-view', `レポート_${player.name}_${selectedGrade}_${selectedPeriod}`)}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold flex items-center gap-2"
+          >
+            <FileText size={16} />
+            PDF出力
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white p-12 rounded-3xl shadow-xl border border-zinc-100 print:shadow-none print:border-none">
+      <div className="bg-white p-12 rounded-3xl shadow-xl border border-zinc-100 print:shadow-none print:border-none" id="report-view">
         {/* Header */}
         <div className="flex justify-between items-start border-b-2 border-zinc-900 pb-8 mb-8">
           <div>
             <h1 className="text-4xl font-black text-zinc-900 mb-2 uppercase tracking-tighter">GK IDP REPORT</h1>
             <div className="flex items-center gap-4 text-zinc-500 font-bold">
               <span className="flex items-center gap-1"><Users size={16} /> {player.name}</span>
-              <span className="flex items-center gap-1"><Calendar size={16} /> {selectedPeriod}</span>
+              <span className="flex items-center gap-1">
+                <Calendar size={16} /> {selectedGrade} {selectedPeriod}
+              </span>
             </div>
           </div>
           <div className="text-right">
@@ -1997,7 +2135,7 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
             <div className="text-5xl font-black text-emerald-600">
               {(() => {
                 if (!currentEval || !currentEval.scores) return '-';
-                const scores = Object.values(currentEval.scores);
+                const scores = Object.values(currentEval.scores) as number[];
                 if (scores.length === 0) return '-';
                 return getRankLabel(scores.reduce((a, b) => a + b, 0) / scores.length);
               })()}
@@ -2139,44 +2277,46 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
         <div className="mb-12">
           <h2 className="text-xl font-bold mb-6 border-l-4 border-emerald-500 pl-4">定期目標 & 振り返り</h2>
           <div className="space-y-8">
-            {[
-              { label: '4-7月', data: data.goals?.period1 },
-              { label: '8-11月', data: data.goals?.period2 },
-              { label: '12-3月', data: data.goals?.period3 },
-            ].map((period, i) => (
-              <div key={i} className="border border-zinc-200 rounded-2xl overflow-hidden">
-                <div className="bg-zinc-900 text-white p-4 flex justify-between items-center">
-                  <h3 className="font-black uppercase tracking-widest">{period.label}</h3>
-                  <span className="text-xs font-bold text-zinc-400">面談日: {period.data?.interviewDate || '-'}</span>
-                </div>
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div>
-                      <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">パフォーマンス目標</div>
-                      <div className="text-sm font-bold text-zinc-900 leading-relaxed">{period.data?.performanceGoal || '-'}</div>
-                      {period.data?.metrics && (
-                        <div className="mt-2 inline-block px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-100">
-                          数値目標: {period.data.metrics}
-                        </div>
-                      )}
+            {PERIODS.map((pLabel, i) => {
+              const pData = getGoalData(pLabel);
+              return (
+                <div key={i} className="border border-zinc-200 rounded-2xl overflow-hidden">
+                  <div className="bg-zinc-900 text-white p-4 flex justify-between items-center">
+                    <h3 className="font-black uppercase tracking-widest">
+                      <span className="text-[10px] text-zinc-500 block mb-0.5">{selectedGrade}</span>
+                      {pLabel}
+                    </h3>
+                    <span className="text-xs font-bold text-zinc-400">面談日: {pData?.interviewDate || '-'}</span>
+                  </div>
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <div>
+                        <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">パフォーマンス目標</div>
+                        <div className="text-sm font-bold text-zinc-900 leading-relaxed">{pData?.performanceGoal || '-'}</div>
+                        {pData?.metrics && (
+                          <div className="mt-2 inline-block px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-100">
+                            数値目標: {pData.metrics}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">プロセス目標</div>
+                        <div className="text-sm text-zinc-600 leading-relaxed whitespace-pre-wrap">{pData?.processGoal || '-'}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">プロセス目標</div>
-                      <div className="text-sm text-zinc-600 leading-relaxed whitespace-pre-wrap">{period.data?.processGoal || '-'}</div>
+                    <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
+                      <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <MessageSquare size={12} />
+                        振り返り
+                      </div>
+                      <div className="text-sm text-zinc-600 leading-relaxed whitespace-pre-wrap italic">
+                        {pData?.review || '未記入'}
+                      </div>
                     </div>
                   </div>
-                  <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
-                    <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-2">
-                      <MessageSquare size={12} />
-                      振り返り
-                    </div>
-                    <div className="text-sm text-zinc-600 leading-relaxed whitespace-pre-wrap italic">
-                      {period.data?.review || '未記入'}
-                    </div>
-                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -2187,7 +2327,7 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
             <div className="space-y-4">
               {CATEGORIES.map(cat => {
                 const items = EVAL_ITEMS[cat] || [];
-                const scores = items.map(item => currentEval?.scores?.[item] || 0);
+                const scores = items.map(item => currentEval?.scores?.[item] || 0) as number[];
                 const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
                 const percentage = (avg / 10) * 100;
                 
@@ -2575,7 +2715,7 @@ export default function App() {
               >
                 {activeTab === 'dashboard' && currentData && <Dashboard data={currentData} />}
                 {activeTab === 'profile' && currentData && <ProfileSection profile={currentData.profile || DEFAULT_PROFILE} onSave={handleUpdateProfile} />}
-                {activeTab === 'goals' && currentData && <GoalForm goals={currentData.goals} onSave={handleUpdateGoals} />}
+                {activeTab === 'goals' && currentData && <GoalForm goals={currentData.goals} profile={currentData.profile || DEFAULT_PROFILE} onSave={handleUpdateGoals} />}
                 {activeTab === 'eval' && currentData && <EvaluationForm data={currentData} onSave={handleUpdateEvals} />}
                 {activeTab === 'match-stats' && currentData && <MatchStatsSection stats={currentData.matchStats || []} onSave={handleUpdateStats} />}
                 {activeTab === 'test-results' && currentData && <TestResultsSection tests={currentData.testResults || []} onSave={handleUpdateTests} />}

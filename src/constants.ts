@@ -355,6 +355,11 @@ export const EVAL_CRITERIA: Record<string, { S: string; A: string; B: string; C:
 
 export const PERIODS = ['4-7月', '8-11月', '12-3月'];
 
+export const GRADES = [
+  '中学1年生', '中学2年生', '中学3年生',
+  '高校1年生', '高校2年生', '高校3年生'
+];
+
 export const SCORE_LABELS = [
   { range: [1, 4], label: 'C' },
   { range: [5, 6], label: 'B' },
