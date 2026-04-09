@@ -98,7 +98,8 @@ const DEFAULT_GOALS = {
   period3: { performanceGoal: 'プロ下部組織への昇格内定', processGoal: 'ビルドアップの起点となる', metrics: 'パス成功率', interviewDate: '2025-12-20', review: '' },
 };
 
-const DEFAULT_PROFILE = {
+const DEFAULT_PROFILE: PlayerProfile = {
+  name: '',
   grade: '高校2年生',
   height: '182',
   weight: '75',
@@ -108,6 +109,190 @@ const DEFAULT_PROFILE = {
 };
 
 // --- Components ---
+
+const SaveButton = ({ 
+  onClick, 
+  label, 
+  className,
+  icon: Icon = Save
+}: { 
+  onClick: () => void | Promise<void>, 
+  label: string, 
+  className?: string,
+  icon?: any
+}) => {
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setStatus('saving');
+    try {
+      await onClick();
+      setStatus('saved');
+      setTimeout(() => setStatus('idle'), 2000);
+    } catch (error) {
+      console.error("Save failed", error);
+      setStatus('idle');
+    }
+  };
+
+  return (
+    <button 
+      onClick={handleClick}
+      disabled={status === 'saving'}
+      className={cn(
+        "relative overflow-hidden transition-all active:scale-95 flex items-center justify-center gap-2",
+        status === 'saved' ? "bg-emerald-500 text-white" : className,
+        status === 'saving' && "opacity-80 cursor-not-allowed"
+      )}
+    >
+      <AnimatePresence mode="wait">
+        {status === 'saved' ? (
+          <motion.div
+            key="saved"
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -10, opacity: 0 }}
+            className="flex items-center justify-center gap-2"
+          >
+            <ClipboardCheck size={18} />
+            <span>保存完了</span>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="idle"
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -10, opacity: 0 }}
+            className="flex items-center justify-center gap-2"
+          >
+            <Icon size={18} />
+            <span>{status === 'saving' ? '保存中...' : label}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </button>
+  );
+};
+
+const Modal = ({ 
+  onClose, 
+  title, 
+  children 
+}: { 
+  onClose: () => void, 
+  title: string, 
+  children: React.ReactNode 
+}) => {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+      />
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-zinc-200"
+      >
+        <div className="px-6 py-4 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
+          <h3 className="font-bold text-zinc-900">{title}</h3>
+          <button onClick={onClose} className="p-1 hover:bg-zinc-200 rounded-lg transition-colors">
+            <Plus size={20} className="rotate-45 text-zinc-500" />
+          </button>
+        </div>
+        <div className="p-6">
+          {children}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const AddPlayerModal = ({ 
+  onClose, 
+  onAdd 
+}: { 
+  onClose: () => void, 
+  onAdd: (name: string) => void 
+}) => {
+  const [name, setName] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (name.trim()) {
+      onAdd(name.trim());
+      setName('');
+      onClose();
+    }
+  };
+
+  return (
+    <Modal onClose={onClose} title="新しい選手を追加">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">選手名</label>
+          <input 
+            autoFocus
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="例: 佐藤 健太"
+            className="w-full p-4 bg-zinc-50 border border-zinc-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+          />
+        </div>
+        <button 
+          type="submit"
+          disabled={!name.trim()}
+          className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:hover:bg-emerald-600 text-white font-bold rounded-2xl shadow-lg shadow-emerald-900/10 transition-all active:scale-[0.98]"
+        >
+          追加する
+        </button>
+      </form>
+    </Modal>
+  );
+};
+
+const DeleteConfirmModal = ({ 
+  onClose, 
+  onConfirm,
+  playerName
+}: { 
+  onClose: () => void, 
+  onConfirm: () => void,
+  playerName: string
+}) => (
+  <Modal onClose={onClose} title="選手の削除">
+    <div className="space-y-6">
+      <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
+        <p className="text-red-800 text-sm leading-relaxed">
+          <span className="font-bold">{playerName}</span> 選手のデータをすべて削除してもよろしいですか？この操作は取り消せません。
+        </p>
+      </div>
+      <div className="flex gap-3">
+        <button 
+          onClick={onClose}
+          className="flex-1 py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 font-bold rounded-xl transition-colors"
+        >
+          キャンセル
+        </button>
+        <button 
+          onClick={() => {
+            onConfirm();
+            onClose();
+          }}
+          className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg shadow-red-900/20 transition-colors"
+        >
+          削除する
+        </button>
+      </div>
+    </div>
+  </Modal>
+);
 
 const Login = ({ onLogin }: { onLogin: () => void }) => {
   const [password, setPassword] = useState('');
@@ -249,13 +434,17 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 const Sidebar = ({ 
   players, 
   selectedId, 
-  onSelect 
+  onSelect,
+  onAddPlayer,
+  onDeletePlayer
 }: { 
   players: Player[], 
   selectedId: string, 
-  onSelect: (id: string) => void 
+  onSelect: (id: string) => void,
+  onAddPlayer: () => void,
+  onDeletePlayer: (id: string) => void
 }) => (
-  <div className="w-64 bg-zinc-900 text-zinc-100 h-screen flex flex-col border-r border-zinc-800">
+  <div className="w-64 bg-zinc-900 text-zinc-100 h-screen flex flex-col border-r border-zinc-800 shrink-0">
     <div className="p-6 border-b border-zinc-800">
       <h1 className="text-xl font-bold flex items-center gap-2">
         <Award className="text-emerald-500" />
@@ -266,37 +455,56 @@ const Sidebar = ({
     <div className="flex-1 overflow-y-auto p-4 space-y-2">
       <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-2 mb-2">Players</div>
       {players.map(player => (
-        <button
-          key={player.id}
-          onClick={() => onSelect(player.id)}
-          className={cn(
-            "w-full text-left px-4 py-3 rounded-lg flex items-center justify-between transition-all group",
-            selectedId === player.id 
-              ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/20" 
-              : "hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100"
+        <div key={player.id} className="group relative">
+          <button
+            onClick={() => onSelect(player.id)}
+            className={cn(
+              "w-full text-left px-4 py-3 rounded-lg flex items-center justify-between transition-all",
+              selectedId === player.id 
+                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/20" 
+                : "hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
+                selectedId === player.id ? "bg-white/20" : "bg-zinc-700"
+              )}>
+                {player.name[0]}
+              </div>
+              <div className="flex flex-col">
+                <span className="font-medium truncate max-w-[120px]">{player.name}</span>
+                <span className="text-[10px] opacity-60">{player.grade}</span>
+              </div>
+            </div>
+            <ChevronRight size={16} className={cn(
+              "transition-transform",
+              selectedId === player.id ? "rotate-90" : "opacity-0 group-hover:opacity-100"
+            )} />
+          </button>
+          
+          {selectedId !== player.id && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeletePlayer(player.id);
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <Plus size={14} className="rotate-45" />
+            </button>
           )}
-        >
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
-              selectedId === player.id ? "bg-white/20" : "bg-zinc-700"
-            )}>
-              {player.name[0]}
-            </div>
-            <div className="flex flex-col">
-              <span className="font-medium">{player.name}</span>
-              <span className="text-[10px] opacity-60">{player.grade}</span>
-            </div>
-          </div>
-          <ChevronRight size={16} className={cn(
-            "transition-transform",
-            selectedId === player.id ? "rotate-90" : "opacity-0 group-hover:opacity-100"
-          )} />
-        </button>
+        </div>
       ))}
     </div>
     <div className="p-4 border-t border-zinc-800">
-      <button className="w-full py-2 px-4 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors">
+      <button 
+        onClick={() => {
+          console.log("Add Player button clicked");
+          onAddPlayer();
+        }}
+        className="w-full py-2 px-4 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
+      >
         <Plus size={16} />
         Add Player
       </button>
@@ -482,6 +690,16 @@ const ProfileSection = ({ profile, onSave }: { profile: PlayerProfile, onSave: (
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">選手名</label>
+            <input 
+              type="text"
+              value={formData.name}
+              onChange={e => setFormData({...formData, name: e.target.value})}
+              className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="例: 佐藤 健太"
+            />
+          </div>
+          <div className="space-y-2">
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">学年</label>
             <select 
               value={formData.grade}
@@ -556,12 +774,11 @@ const ProfileSection = ({ profile, onSave }: { profile: PlayerProfile, onSave: (
         </div>
 
         <div className="flex justify-end pt-4">
-          <button 
-            type="submit"
-            className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-700 transition-all"
-          >
-            プロフィールを保存
-          </button>
+          <SaveButton 
+            onClick={() => onSave(formData)}
+            label="プロフィールを保存"
+            className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-700"
+          />
         </div>
       </form>
     </div>
@@ -692,12 +909,11 @@ const GoalForm = ({ goals, onSave }: { goals: any, onSave: (goals: any) => void 
         ))}
 
         <div className="flex justify-end">
-          <button 
+          <SaveButton 
             onClick={() => onSave(formData)}
-            className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/20 transition-all"
-          >
-            保存する
-          </button>
+            label="保存する"
+            className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/20"
+          />
         </div>
       </div>
     </div>
@@ -1068,9 +1284,11 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
               setEditingId(null);
               setNewStat(initialStat);
             }} className="px-4 py-2 text-zinc-500 font-bold">キャンセル</button>
-            <button onClick={handleAdd} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold">
-              {editingId ? '更新する' : '追加する'}
-            </button>
+            <SaveButton 
+              onClick={handleAdd}
+              label={editingId ? '更新する' : '追加する'}
+              className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold"
+            />
           </div>
         </div>
       )}
@@ -1330,9 +1548,11 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
               setEditingId(null);
               setNewTest(initialTest);
             }} className="px-4 py-2 text-zinc-500 font-bold">キャンセル</button>
-            <button onClick={handleAdd} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/20">
-              {editingId ? '更新する' : '記録を保存'}
-            </button>
+            <SaveButton 
+              onClick={handleAdd}
+              label={editingId ? '更新する' : '記録を保存'}
+              className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/20"
+            />
           </div>
         </div>
       )}
@@ -1629,12 +1849,11 @@ const EvaluationForm = ({ data, onSave }: { data: PlayerData, onSave: (evals: Ev
               </div>
             </div>
             <div className="flex justify-end pt-4">
-              <button 
+              <SaveButton 
                 onClick={handleSave}
-                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/20 transition-all"
-              >
-                評価を保存する
-              </button>
+                label="評価を保存する"
+                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/20"
+              />
             </div>
           </div>
         </div>
@@ -1991,8 +2210,24 @@ export default function App() {
     return localStorage.getItem('coach_auth') === 'true';
   });
 
-  const [selectedPlayerId, setSelectedPlayerId] = useState(INITIAL_PLAYERS[0].id);
+  const [players, setPlayers] = useState<Player[]>(() => {
+    const saved = localStorage.getItem('gk_idp_players');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return INITIAL_PLAYERS;
+      }
+    }
+    return INITIAL_PLAYERS;
+  });
+
+  const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || '');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'profile' | 'goals' | 'eval' | 'match-stats' | 'test-results' | 'report'>('dashboard');
+  
+  // Modals state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [playerToDeleteId, setPlayerToDeleteId] = useState<string | null>(null);
   
   // State for persistence (mocking with local storage)
   const [allData, setAllData] = useState<Record<string, PlayerData>>(() => {
@@ -2009,7 +2244,7 @@ export default function App() {
     
     // Initial mock data for all players
     const initial: Record<string, PlayerData> = {};
-    INITIAL_PLAYERS.forEach(p => {
+    players.forEach(p => {
       const existing = (parsed[p.id] || {}) as any;
       
       // Migrate goals if needed
@@ -2076,6 +2311,54 @@ export default function App() {
     localStorage.setItem('gk_idp_data', JSON.stringify(allData));
   }, [allData]);
 
+  useEffect(() => {
+    localStorage.setItem('gk_idp_players', JSON.stringify(players));
+  }, [players]);
+
+  const handleAddPlayer = (name: string) => {
+    console.log("Adding player:", name);
+    const newId = Math.random().toString(36).substr(2, 9);
+    const newPlayer: Player = {
+      id: newId,
+      name,
+      grade: '中学1年生',
+      birthDate: '',
+      dominantArm: '右'
+    };
+    
+    setPlayers(prev => [...prev, newPlayer]);
+    setAllData(prev => ({
+      ...prev,
+      [newId]: {
+        id: newId,
+        profile: { ...DEFAULT_PROFILE, name, grade: '中学1年生' },
+        goals: DEFAULT_GOALS,
+        evaluations: [],
+        matchStats: [],
+        testResults: []
+      }
+    }));
+    setSelectedPlayerId(newId);
+    setActiveTab('profile');
+  };
+
+  const handleDeletePlayer = () => {
+    if (!playerToDeleteId) return;
+    
+    const id = playerToDeleteId;
+    const newPlayers = players.filter(p => p.id !== id);
+    setPlayers(newPlayers);
+    setAllData(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (selectedPlayerId === id) {
+      setSelectedPlayerId(newPlayers[0]?.id || '');
+    }
+    setPlayerToDeleteId(null);
+  };
+
   const handleExportData = () => {
     const dataStr = JSON.stringify(allData, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
@@ -2111,14 +2394,20 @@ export default function App() {
     e.target.value = '';
   };
 
-  const currentPlayer = INITIAL_PLAYERS.find(p => p.id === selectedPlayerId)!;
-  const currentData = allData[selectedPlayerId];
+  const currentPlayer = players.find(p => p.id === selectedPlayerId);
+  const currentData = selectedPlayerId ? allData[selectedPlayerId] : null;
 
-  const handleUpdateProfile = (newProfile: any) => {
+  const handleUpdateProfile = (newProfile: PlayerProfile) => {
     setAllData(prev => ({
       ...prev,
       [selectedPlayerId]: { ...prev[selectedPlayerId], profile: newProfile }
     }));
+    // Update player name and grade in the players list if changed
+    setPlayers(prev => prev.map(p => p.id === selectedPlayerId ? { 
+      ...p, 
+      name: newProfile.name,
+      grade: newProfile.grade 
+    } : p));
   };
 
   const handleUpdateGoals = (newGoals: any) => {
@@ -2168,40 +2457,46 @@ export default function App() {
   return (
     <div className="flex bg-zinc-50 min-h-screen font-sans text-zinc-900">
       <Sidebar 
-        players={INITIAL_PLAYERS} 
+        players={players} 
         selectedId={selectedPlayerId} 
         onSelect={setSelectedPlayerId} 
+        onAddPlayer={() => setIsAddModalOpen(true)}
+        onDeletePlayer={(id) => setPlayerToDeleteId(id)}
       />
       
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header / Nav */}
         <header className="bg-white border-b border-zinc-200 px-8 py-4 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-black tracking-tight">{currentPlayer.name}</h2>
-            <div className="h-6 w-px bg-zinc-200" />
-            <nav className="flex gap-1">
-              {[
-                { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                { id: 'profile', label: 'Profile', icon: User },
-                { id: 'goals', label: 'Goals', icon: Target },
-                { id: 'eval', label: 'Evaluation', icon: ClipboardCheck },
-                { id: 'match-stats', label: 'Match Stats', icon: Activity },
-                { id: 'test-results', label: 'Test Results', icon: BarChart3 },
-                { id: 'report', label: 'Report', icon: FileText },
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all",
-                    activeTab === tab.id ? "bg-emerald-50 text-emerald-600" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50"
-                  )}
-                >
-                  <tab.icon size={16} />
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
+            <h2 className="text-2xl font-black tracking-tight">{currentPlayer?.name || '選手を選択してください'}</h2>
+            {currentPlayer && (
+              <>
+                <div className="h-6 w-px bg-zinc-200" />
+                <nav className="flex gap-1">
+                  {[
+                    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+                    { id: 'profile', label: 'Profile', icon: User },
+                    { id: 'goals', label: 'Goals', icon: Target },
+                    { id: 'eval', label: 'Evaluation', icon: ClipboardCheck },
+                    { id: 'match-stats', label: 'Match Stats', icon: Activity },
+                    { id: 'test-results', label: 'Test Results', icon: BarChart3 },
+                    { id: 'report', label: 'Report', icon: FileText },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={cn(
+                        "px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all",
+                        activeTab === tab.id ? "bg-emerald-50 text-emerald-600" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50"
+                      )}
+                    >
+                      <tab.icon size={16} />
+                      {tab.label}
+                    </button>
+                  ))}
+                </nav>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100">
@@ -2241,29 +2536,65 @@ export default function App() {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-8">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab + selectedPlayerId}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {activeTab === 'dashboard' && <Dashboard data={currentData} />}
-              {activeTab === 'profile' && <ProfileSection profile={currentData.profile || DEFAULT_PROFILE} onSave={handleUpdateProfile} />}
-              {activeTab === 'goals' && <GoalForm goals={currentData.goals} onSave={handleUpdateGoals} />}
-              {activeTab === 'eval' && <EvaluationForm data={currentData} onSave={handleUpdateEvals} />}
-              {activeTab === 'match-stats' && <MatchStatsSection stats={currentData.matchStats || []} onSave={handleUpdateStats} />}
-              {activeTab === 'test-results' && <TestResultsSection tests={currentData.testResults || []} onSave={handleUpdateTests} />}
-              {activeTab === 'report' && (
-                <ErrorBoundary>
-                  <ReportView player={currentPlayer} data={currentData} />
-                </ErrorBoundary>
-              )}
-            </motion.div>
-          </AnimatePresence>
+          {!currentPlayer ? (
+            <div className="h-full flex flex-col items-center justify-center text-zinc-400 space-y-4">
+              <Users size={64} className="opacity-20" />
+              <p className="text-lg font-bold">左側のサイドバーから選手を選択するか、新しく追加してください</p>
+              <button 
+                onClick={() => {
+                  console.log("Empty State Add Player button clicked");
+                  setIsAddModalOpen(true);
+                }}
+                className="px-6 py-3 bg-emerald-600 text-white rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20"
+              >
+                <Plus size={20} />
+                選手を追加する
+              </button>
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab + selectedPlayerId}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                {activeTab === 'dashboard' && currentData && <Dashboard data={currentData} />}
+                {activeTab === 'profile' && currentData && <ProfileSection profile={currentData.profile || DEFAULT_PROFILE} onSave={handleUpdateProfile} />}
+                {activeTab === 'goals' && currentData && <GoalForm goals={currentData.goals} onSave={handleUpdateGoals} />}
+                {activeTab === 'eval' && currentData && <EvaluationForm data={currentData} onSave={handleUpdateEvals} />}
+                {activeTab === 'match-stats' && currentData && <MatchStatsSection stats={currentData.matchStats || []} onSave={handleUpdateStats} />}
+                {activeTab === 'test-results' && currentData && <TestResultsSection tests={currentData.testResults || []} onSave={handleUpdateTests} />}
+                {activeTab === 'report' && currentData && (
+                  <ErrorBoundary>
+                    <ReportView player={currentPlayer} data={currentData} />
+                  </ErrorBoundary>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          )}
         </div>
       </main>
+
+      <AnimatePresence>
+        {isAddModalOpen && (
+          <AddPlayerModal 
+            onClose={() => setIsAddModalOpen(false)} 
+            onAdd={handleAddPlayer} 
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {playerToDeleteId && (
+          <DeleteConfirmModal 
+            onClose={() => setPlayerToDeleteId(null)} 
+            onConfirm={handleDeletePlayer}
+            playerName={players.find(p => p.id === playerToDeleteId)?.name || ''}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

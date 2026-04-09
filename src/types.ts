@@ -65,6 +65,7 @@ export interface TestResults {
 }
 
 export interface PlayerProfile {
+  name: string;
   grade: string;
   height: string;
   weight: string;
