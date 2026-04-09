@@ -59,10 +59,16 @@ const getRankLabel = (score: number) => {
   return 'C';
 };
 
-const getShotStopColor = (rate: number) => {
+const getShotStopColor = (rate: number | null) => {
+  if (rate === null) return 'text-zinc-400';
   if (rate < 30) return 'text-red-500';
   if (rate < 80) return 'text-amber-500';
   return 'text-blue-500';
+};
+
+const formatRate = (success: number, total: number) => {
+  if (!total || total === 0) return '-';
+  return `${Math.round((success / total) * 100)}%`;
 };
 
 const getCriteriaText = (item: string, score: number) => {
@@ -942,7 +948,7 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
   const [newStat, setNewStat] = useState<MatchStats>(initialStat);
 
   const calculateRate = (success: number, total: number) => {
-    if (total === 0) return 0;
+    if (!total || total === 0) return null;
     return Math.round((success / total) * 100);
   };
 
@@ -997,17 +1003,17 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 border-t pt-4">
       <div className="p-3 bg-zinc-50 rounded-xl">
         <div className="text-[10px] text-zinc-400 font-bold uppercase">PA外セーブ率</div>
-        <div className="text-sm font-bold">{calculateRate(s.paOutside.saves, s.paOutside.shots)}%</div>
+        <div className="text-sm font-bold">{formatRate(s.paOutside.saves, s.paOutside.shots)}</div>
         <div className="text-[9px] text-zinc-400">({s.paOutside.saves}/{s.paOutside.shots})</div>
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
         <div className="text-[10px] text-zinc-400 font-bold uppercase">PA内セーブ率</div>
-        <div className="text-sm font-bold">{calculateRate(s.paInside.saves, s.paInside.shots)}%</div>
+        <div className="text-sm font-bold">{formatRate(s.paInside.saves, s.paInside.shots)}</div>
         <div className="text-[9px] text-zinc-400">({s.paInside.saves}/{s.paInside.shots})</div>
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
         <div className="text-[10px] text-zinc-400 font-bold uppercase">ハイボール成功率</div>
-        <div className="text-sm font-bold">{calculateRate(s.highBall.successes, s.highBall.attacks)}%</div>
+        <div className="text-sm font-bold">{formatRate(s.highBall.successes, s.highBall.attacks)}</div>
         <div className="text-[9px] text-zinc-400">({s.highBall.successes}/{s.highBall.attacks})</div>
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
@@ -1016,7 +1022,7 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
         <div className="text-[10px] text-zinc-400 font-bold uppercase">1v1B成功率</div>
-        <div className="text-sm font-bold">{calculateRate(s.oneVsOneB.successes, s.oneVsOneB.attacks)}%</div>
+        <div className="text-sm font-bold">{formatRate(s.oneVsOneB.successes, s.oneVsOneB.attacks)}</div>
         <div className="text-[9px] text-zinc-400">({s.oneVsOneB.successes}/{s.oneVsOneB.attacks})</div>
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
@@ -1025,7 +1031,7 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
         <div className="text-[10px] text-zinc-400 font-bold uppercase">スイーパー成功率</div>
-        <div className="text-sm font-bold">{calculateRate(s.sweeper.successes, s.sweeper.attacks)}%</div>
+        <div className="text-sm font-bold">{formatRate(s.sweeper.successes, s.sweeper.attacks)}</div>
         <div className="text-[9px] text-zinc-400">({s.sweeper.successes}/{s.sweeper.attacks})</div>
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
@@ -1034,17 +1040,17 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
         <div className="text-[10px] text-zinc-400 font-bold uppercase">DFへのパス成功率</div>
-        <div className="text-sm font-bold">{calculateRate(s.passDF.successes, s.passDF.total)}%</div>
+        <div className="text-sm font-bold">{formatRate(s.passDF.successes, s.passDF.total)}</div>
         <div className="text-[9px] text-zinc-400">({s.passDF.successes}/{s.passDF.total})</div>
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
         <div className="text-[10px] text-zinc-400 font-bold uppercase">MFへのパス成功率</div>
-        <div className="text-sm font-bold">{calculateRate(s.passMF.successes, s.passMF.total)}%</div>
+        <div className="text-sm font-bold">{formatRate(s.passMF.successes, s.passMF.total)}</div>
         <div className="text-[9px] text-zinc-400">({s.passMF.successes}/{s.passMF.total})</div>
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
         <div className="text-[10px] text-zinc-400 font-bold uppercase">FWへのパス成功率</div>
-        <div className="text-sm font-bold">{calculateRate(s.passFW.successes, s.passFW.total)}%</div>
+        <div className="text-sm font-bold">{formatRate(s.passFW.successes, s.passFW.total)}</div>
         <div className="text-[9px] text-zinc-400">({s.passFW.successes}/{s.passFW.total})</div>
       </div>
     </div>
@@ -1530,8 +1536,8 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
                               />
                             </div>
                           </div>
-                          <span className={cn("text-[10px] font-bold mt-1", getShotStopColor(cell[1] > 0 ? Math.round((cell[0] / cell[1]) * 100) : 0))}>
-                            {cell[1] > 0 ? Math.round((cell[0] / cell[1]) * 100) : 0}%
+                          <span className={cn("text-[10px] font-bold mt-1", getShotStopColor(cell[1] > 0 ? Math.round((cell[0] / cell[1]) * 100) : null))}>
+                            {formatRate(cell[0], cell[1])}
                           </span>
                         </div>
                       ))
@@ -1608,7 +1614,7 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
                       const grid = t.shootStop[dist as keyof typeof t.shootStop];
                       const totalSaves = grid.flat().reduce((acc, curr) => acc + curr[0], 0);
                       const totalShots = grid.flat().reduce((acc, curr) => acc + curr[1], 0);
-                      const overallRate = totalShots > 0 ? Math.round((totalSaves / totalShots) * 100) : 0;
+                      const overallRate = totalShots > 0 ? Math.round((totalSaves / totalShots) * 100) : null;
 
                       return (
                         <div key={dist} className="space-y-4">
@@ -1620,16 +1626,16 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
                                 const leftShots = grid.reduce((acc, row) => acc + row[0][1], 0);
                                 const rightSaves = grid.reduce((acc, row) => acc + row[2][0], 0);
                                 const rightShots = grid.reduce((acc, row) => acc + row[2][1], 0);
-                                const leftRate = leftShots > 0 ? Math.round((leftSaves / leftShots) * 100) : 0;
-                                const rightRate = rightShots > 0 ? Math.round((rightSaves / rightShots) * 100) : 0;
+                                const leftRate = leftShots > 0 ? Math.round((leftSaves / leftShots) * 100) : null;
+                                const rightRate = rightShots > 0 ? Math.round((rightSaves / rightShots) * 100) : null;
                                 return (
                                   <>
-                                    <div className="text-[10px] font-bold text-zinc-400">左: <span className={cn(getShotStopColor(leftRate))}>{leftRate}%</span></div>
-                                    <div className="text-[10px] font-bold text-zinc-400">右: <span className={cn(getShotStopColor(rightRate))}>{rightRate}%</span></div>
+                                    <div className="text-[10px] font-bold text-zinc-400">左: <span className={cn(getShotStopColor(leftRate))}>{formatRate(leftSaves, leftShots)}</span></div>
+                                    <div className="text-[10px] font-bold text-zinc-400">右: <span className={cn(getShotStopColor(rightRate))}>{formatRate(rightSaves, rightShots)}</span></div>
                                   </>
                                 );
                               })()}
-                              <div className={cn("text-xl font-black", getShotStopColor(overallRate))}>{overallRate}% <span className="text-[10px] text-zinc-400">Overall</span></div>
+                              <div className={cn("text-xl font-black", getShotStopColor(overallRate))}>{formatRate(totalSaves, totalShots)} <span className="text-[10px] text-zinc-400">Overall</span></div>
                             </div>
                           </div>
                           <div className="flex justify-between text-[10px] font-bold text-zinc-400 mb-1 px-1">
@@ -1639,11 +1645,11 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
                           <div className="grid grid-cols-3 gap-1 bg-zinc-900 p-1 rounded-lg aspect-square">
                             {grid.map((row, r) => (
                               row.map((cell, c) => {
-                                const rate = cell[1] > 0 ? Math.round((cell[0] / cell[1]) * 100) : 0;
+                                const rate = cell[1] > 0 ? Math.round((cell[0] / cell[1]) * 100) : null;
                                 return (
                                   <div key={`${r}-${c}`} className="bg-zinc-800 rounded flex flex-col items-center justify-center text-white">
                                     <div className="text-[10px] font-bold text-zinc-500">{cell[0]}/{cell[1]}</div>
-                                    <div className={cn("text-sm font-black", getShotStopColor(rate).replace('text-', 'text-'))}>{rate}%</div>
+                                    <div className={cn("text-sm font-black", getShotStopColor(rate))}>{formatRate(cell[0], cell[1])}</div>
                                   </div>
                                 );
                               })
@@ -1879,7 +1885,7 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
   };
 
   const calculateRate = (success: number, total: number) => {
-    if (!total || total === 0) return 0;
+    if (!total || total === 0) return null;
     return Math.round((success / total) * 100);
   };
 
@@ -2026,7 +2032,10 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
             ].map((s, i) => (
               <div key={i} className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
                 <div className="text-[10px] font-bold text-zinc-400 uppercase mb-1">{s.label}</div>
-                <div className="text-xl font-black text-zinc-900">{s.val}<span className="text-xs ml-0.5">{s.unit}</span></div>
+                <div className="text-xl font-black text-zinc-900">
+                  {s.val === null ? '-' : s.val}
+                  {s.val !== null && <span className="text-xs ml-0.5">{s.unit}</span>}
+                </div>
               </div>
             ))}
           </div>
@@ -2061,12 +2070,12 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
                   ].map((s, i) => {
                     const totalSaves = s.grid.flat().reduce((acc, curr) => acc + curr[0], 0);
                     const totalShots = s.grid.flat().reduce((acc, curr) => acc + curr[1], 0);
-                    const rate = totalShots > 0 ? Math.round((totalSaves / totalShots) * 100) : 0;
+                    const rate = totalShots > 0 ? Math.round((totalSaves / totalShots) * 100) : null;
                     return (
                       <div key={i} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 space-y-4">
                         <div className="flex justify-between items-end">
                           <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{s.label}</div>
-                          <div className={cn("text-xl font-black", getShotStopColor(rate))}>{rate}% <span className="text-[10px] text-zinc-400">Total</span></div>
+                          <div className={cn("text-xl font-black", getShotStopColor(rate))}>{formatRate(totalSaves, totalShots)} <span className="text-[10px] text-zinc-400">Total</span></div>
                         </div>
                         <div className="space-y-1">
                           <div className="flex justify-between text-[8px] font-bold text-zinc-400 px-1">
@@ -2076,7 +2085,7 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
                           <div className="grid grid-cols-3 gap-1 bg-zinc-900 p-1 rounded-lg aspect-square">
                             {s.grid.map((row, r) => (
                               row.map((cell, c) => {
-                                const cellRate = cell[1] > 0 ? Math.round((cell[0] / cell[1]) * 100) : 0;
+                                const cellRate = cell[1] > 0 ? Math.round((cell[0] / cell[1]) * 100) : null;
                                 const labels = [
                                   ['左上', '中上', '右上'],
                                   ['左中', '真中', '右中'],
@@ -2086,7 +2095,7 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
                                   <div key={`${r}-${c}`} className="bg-zinc-800 rounded flex flex-col items-center justify-center text-white p-1">
                                     <div className="text-[7px] font-bold text-zinc-500 mb-0.5">{labels[r][c]}</div>
                                     <div className="text-[8px] font-bold text-zinc-400">{cell[0]}/{cell[1]}</div>
-                                    <div className={cn("text-xs font-black", getShotStopColor(cellRate))}>{cellRate}%</div>
+                                    <div className={cn("text-xs font-black", getShotStopColor(cellRate))}>{formatRate(cell[0], cell[1])}</div>
                                   </div>
                                 );
                               })
