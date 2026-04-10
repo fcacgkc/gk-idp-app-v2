@@ -653,16 +653,23 @@ const Dashboard = ({ data }: { data: PlayerData }) => {
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                {CATEGORIES.map((cat, idx) => (
+                {CATEGORIES.map((cat) => (
                   <Line 
                     key={cat} 
                     type="monotone" 
                     name={CATEGORY_LABELS[cat]}
                     dataKey={cat} 
-                    stroke={['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'][idx % 5]} 
-                    strokeWidth={3}
-                    dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
-                    activeDot={{ r: 6 }}
+                    stroke={{
+                      Technical: '#3b82f6',
+                      Tactical: '#8b5cf6',
+                      Physical: '#ef4444',
+                      Mental: '#f59e0b',
+                      Social: '#10b981',
+                      Situation: '#000000'
+                    }[cat] || '#ccc'} 
+                    strokeWidth={cat === 'Situation' ? 4 : 2}
+                    dot={{ r: cat === 'Situation' ? 4 : 3, strokeWidth: cat === 'Situation' ? 2 : 1, fill: '#fff' }}
+                    activeDot={{ r: cat === 'Situation' ? 6 : 5 }}
                   />
                 ))}
               </LineChart>
