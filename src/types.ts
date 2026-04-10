@@ -33,8 +33,10 @@ export interface GoalSet {
 export interface Evaluation {
   period: string;
   scores: Record<string, number>;
-  videoUrl?: string;
-  feedback?: string;
+  videoUrl?: string; // Legacy support
+  feedback?: string; // Legacy support
+  categoryFeedback?: Record<Category, string>;
+  categoryVideoUrls?: Record<Category, string>;
 }
 
 export interface MatchStats {

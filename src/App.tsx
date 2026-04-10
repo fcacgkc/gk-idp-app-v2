@@ -1780,14 +1780,14 @@ const EvaluationForm = ({ data, onSave }: { data: PlayerData, onSave: (evals: Ev
   const currentEval = getEvalForPeriod(selectedGrade, selectedPeriod);
 
   const [scores, setScores] = useState<Record<string, number>>(currentEval.scores);
-  const [feedback, setFeedback] = useState(currentEval.feedback || '');
-  const [videoUrl, setVideoUrl] = useState(currentEval.videoUrl || '');
+  const [categoryFeedback, setCategoryFeedback] = useState<Record<Category, string>>(currentEval.categoryFeedback || {} as Record<Category, string>);
+  const [categoryVideoUrls, setCategoryVideoUrls] = useState<Record<Category, string>>(currentEval.categoryVideoUrls || {} as Record<Category, string>);
 
   useEffect(() => {
     const ev = getEvalForPeriod(selectedGrade, selectedPeriod);
     setScores(ev.scores);
-    setFeedback(ev.feedback || '');
-    setVideoUrl(ev.videoUrl || '');
+    setCategoryFeedback(ev.categoryFeedback || {} as Record<Category, string>);
+    setCategoryVideoUrls(ev.categoryVideoUrls || {} as Record<Category, string>);
   }, [selectedGrade, selectedPeriod, data.evaluations]);
 
   const handleScoreChange = (item: string, val: number) => {
@@ -1797,7 +1797,7 @@ const EvaluationForm = ({ data, onSave }: { data: PlayerData, onSave: (evals: Ev
   const handleSave = () => {
     const newEvals = [...data.evaluations];
     const idx = newEvals.findIndex(e => e.period === currentPeriodKey);
-    const updatedEval = { ...currentEval, period: currentPeriodKey, scores, feedback, videoUrl };
+    const updatedEval = { ...currentEval, period: currentPeriodKey, scores, categoryFeedback, categoryVideoUrls };
     
     if (idx >= 0) {
       newEvals[idx] = updatedEval;
@@ -1944,7 +1944,7 @@ const EvaluationForm = ({ data, onSave }: { data: PlayerData, onSave: (evals: Ev
           </div>
 
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-zinc-100 space-y-6">
-            <h3 className="text-xl font-bold">フィードバック & エビデンス</h3>
+            <h3 className="text-xl font-bold">{CATEGORY_LABELS[selectedCategory]} フィードバック & エビデンス</h3>
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
@@ -1953,8 +1953,8 @@ const EvaluationForm = ({ data, onSave }: { data: PlayerData, onSave: (evals: Ev
                 </label>
                 <input 
                   type="text"
-                  value={videoUrl}
-                  onChange={e => setVideoUrl(e.target.value)}
+                  value={categoryVideoUrls[selectedCategory] || ''}
+                  onChange={e => setCategoryVideoUrls(prev => ({ ...prev, [selectedCategory]: e.target.value }))}
                   placeholder="https://youtube.com/..."
                   className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
@@ -1962,13 +1962,13 @@ const EvaluationForm = ({ data, onSave }: { data: PlayerData, onSave: (evals: Ev
               <div className="space-y-2">
                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
                   <MessageSquare size={14} />
-                  コーチ・フィードバック
+                  {CATEGORY_LABELS[selectedCategory]} フィードバック
                 </label>
                 <textarea 
-                  value={feedback}
-                  onChange={e => setFeedback(e.target.value)}
+                  value={categoryFeedback[selectedCategory] || ''}
+                  onChange={e => setCategoryFeedback(prev => ({ ...prev, [selectedCategory]: e.target.value }))}
                   className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none h-32"
-                  placeholder="プレーの改善点や評価の理由を記入してください"
+                  placeholder={`${CATEGORY_LABELS[selectedCategory]}の改善点や評価の理由を記入してください`}
                 />
               </div>
             </div>
@@ -2321,49 +2321,103 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
         </div>
 
         {/* Evaluation Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
-          <div>
-            <h2 className="text-xl font-bold mb-6 border-l-4 border-emerald-500 pl-4">評価サマリー</h2>
-            <div className="space-y-4">
-              {CATEGORIES.map(cat => {
-                const items = EVAL_ITEMS[cat] || [];
-                const scores = items.map(item => currentEval?.scores?.[item] || 0) as number[];
-                const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-                const percentage = (avg / 10) * 100;
-                
-                return (
-                  <div key={cat} className="space-y-1">
-                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                      <span className="text-zinc-500">{CATEGORY_LABELS[cat]}</span>
-                      <span className="text-zinc-900">{avg.toFixed(1)} / 10</span>
+        <div className="space-y-12 mb-12">
+          <h2 className="text-2xl font-black border-l-8 border-emerald-500 pl-4 mb-8">カテゴリー別評価 & フィードバック</h2>
+          
+          <div className="grid grid-cols-1 gap-12">
+            {CATEGORIES.map(cat => {
+              const items = EVAL_ITEMS[cat] || [];
+              const scores = items.map(item => currentEval?.scores?.[item] || 0) as number[];
+              const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+              const percentage = (avg / 10) * 100;
+              const feedback = currentEval?.categoryFeedback?.[cat] || (cat === 'Technical' ? currentEval?.feedback : '');
+              const videoUrl = currentEval?.categoryVideoUrls?.[cat] || (cat === 'Technical' ? currentEval?.videoUrl : '');
+              
+              return (
+                <div key={cat} className="bg-zinc-50 rounded-3xl overflow-hidden border border-zinc-100 shadow-sm">
+                  <div className="bg-zinc-900 p-6 flex justify-between items-center text-white">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center font-black text-lg">
+                        {avg.toFixed(1)}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold">{CATEGORY_LABELS[cat]}</h3>
+                        <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Category Score</div>
+                      </div>
                     </div>
-                    <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
+                    <div className="w-48 h-2 bg-zinc-800 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-emerald-500 rounded-full" 
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-1000" 
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="bg-zinc-50 p-6 rounded-2xl">
-            <h2 className="text-xl font-bold mb-4">コーチ・フィードバック</h2>
-            <p className="text-zinc-600 leading-relaxed whitespace-pre-wrap">
-              {currentEval?.feedback || 'フィードバックはまだ入力されていません。'}
-            </p>
-            {currentEval?.videoUrl && (
-              <div className="mt-6 p-4 bg-white rounded-xl border border-zinc-200 flex items-center gap-3">
-                <Video className="text-emerald-600" size={20} />
-                <div className="flex-1 overflow-hidden">
-                  <div className="text-xs font-bold text-zinc-400 uppercase">Video Evidence</div>
-                  <a href={currentEval.videoUrl} target="_blank" className="text-emerald-600 text-sm font-medium truncate block">
-                    {currentEval.videoUrl}
-                  </a>
+
+                  <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                        <Target size={14} />
+                        項目別評価
+                      </h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        {items.map(item => {
+                          const score = currentEval?.scores?.[item] || 0;
+                          return (
+                            <div key={item} className="flex justify-between items-center bg-white p-3 rounded-xl border border-zinc-100">
+                              <span className="text-sm font-bold text-zinc-700">{item}</span>
+                              <div className="flex items-center gap-2">
+                                <div className={cn(
+                                  "text-[10px] font-black px-2 py-0.5 rounded-md",
+                                  score >= 9 ? "bg-emerald-600 text-white" : 
+                                  score >= 7 ? "bg-blue-600 text-white" :
+                                  score >= 5 ? "bg-amber-500 text-white" : "bg-zinc-400 text-white"
+                                )}>
+                                  {getRankLabel(score)}
+                                </div>
+                                <span className="text-sm font-black text-zinc-900 w-4 text-right">{score}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                          <MessageSquare size={14} />
+                          コーチ・フィードバック
+                        </h4>
+                        <div className="bg-white p-6 rounded-2xl border border-zinc-100 min-h-[120px]">
+                          <p className="text-sm text-zinc-600 leading-relaxed whitespace-pre-wrap italic">
+                            {feedback || 'フィードバックはまだ入力されていません。'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {videoUrl && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                            <Video size={14} />
+                            エビデンス動画
+                          </h4>
+                          <div className="bg-white p-4 rounded-xl border border-zinc-100 flex items-center gap-3">
+                            <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
+                              <Video size={20} />
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                              <a href={videoUrl} target="_blank" className="text-emerald-600 text-sm font-bold truncate block hover:underline">
+                                {videoUrl}
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })}
           </div>
         </div>
 
