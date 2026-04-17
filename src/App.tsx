@@ -845,8 +845,19 @@ const ProfileSection = ({ profile, onSave }: { profile: PlayerProfile, onSave: (
   );
 };
 
-const GoalForm = ({ goals, profile, onSave }: { goals: IDPGoals, profile: PlayerProfile, onSave: (goals: IDPGoals) => void }) => {
-  const [selectedGrade, setSelectedGrade] = useState(profile.grade || GRADES[3]);
+const GoalForm = ({ 
+  goals, 
+  profile, 
+  selectedGrade, 
+  setSelectedGrade, 
+  onSave 
+}: { 
+  goals: IDPGoals, 
+  profile: PlayerProfile, 
+  selectedGrade: string,
+  setSelectedGrade: (grade: string) => void,
+  onSave: (goals: IDPGoals) => void 
+}) => {
   const [formData, setFormData] = useState<IDPGoals>(goals || { graduationGoal: '', periods: {} });
 
   useEffect(() => {
@@ -1760,9 +1771,21 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
   );
 };
 
-const EvaluationForm = ({ data, onSave }: { data: PlayerData, onSave: (evals: Evaluation[]) => void }) => {
-  const [selectedGrade, setSelectedGrade] = useState(data.profile?.grade || GRADES[3]);
-  const [selectedPeriod, setSelectedPeriod] = useState(PERIODS[0]);
+const EvaluationForm = ({ 
+  data, 
+  selectedGrade, 
+  setSelectedGrade, 
+  selectedPeriod, 
+  setSelectedPeriod, 
+  onSave 
+}: { 
+  data: PlayerData, 
+  selectedGrade: string,
+  setSelectedGrade: (grade: string) => void,
+  selectedPeriod: string,
+  setSelectedPeriod: (period: string) => void,
+  onSave: (evals: Evaluation[]) => void 
+}) => {
   const [selectedCategory, setSelectedCategory] = useState<Category>('Technical');
   
   const currentPeriodKey = `${selectedGrade}_${selectedPeriod}`;
@@ -2440,6 +2463,21 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
 // --- Main App ---
 
 export default function App() {
+  const [selectedGlobalGrade, setSelectedGlobalGrade] = useState<string>(() => {
+    return localStorage.getItem('gk_idp_selected_grade') || GRADES[3];
+  });
+  const [selectedGlobalPeriod, setSelectedGlobalPeriod] = useState<string>(() => {
+    return localStorage.getItem('gk_idp_selected_period') || PERIODS[0];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('gk_idp_selected_grade', selectedGlobalGrade);
+  }, [selectedGlobalGrade]);
+
+  useEffect(() => {
+    localStorage.setItem('gk_idp_selected_period', selectedGlobalPeriod);
+  }, [selectedGlobalPeriod]);
+
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('coach_auth') === 'true';
   });
@@ -2776,8 +2814,25 @@ export default function App() {
               >
                 {activeTab === 'dashboard' && currentData && <Dashboard data={currentData} />}
                 {activeTab === 'profile' && currentData && <ProfileSection profile={currentData.profile || DEFAULT_PROFILE} onSave={handleUpdateProfile} />}
-                {activeTab === 'goals' && currentData && <GoalForm goals={currentData.goals} profile={currentData.profile || DEFAULT_PROFILE} onSave={handleUpdateGoals} />}
-                {activeTab === 'eval' && currentData && <EvaluationForm data={currentData} onSave={handleUpdateEvals} />}
+                {activeTab === 'goals' && currentData && (
+                  <GoalForm 
+                    goals={currentData.goals} 
+                    profile={currentData.profile || DEFAULT_PROFILE} 
+                    selectedGrade={selectedGlobalGrade}
+                    setSelectedGrade={setSelectedGlobalGrade}
+                    onSave={handleUpdateGoals} 
+                  />
+                )}
+                {activeTab === 'eval' && currentData && (
+                  <EvaluationForm 
+                    data={currentData} 
+                    selectedGrade={selectedGlobalGrade}
+                    setSelectedGrade={setSelectedGlobalGrade}
+                    selectedPeriod={selectedGlobalPeriod}
+                    setSelectedPeriod={setSelectedGlobalPeriod}
+                    onSave={handleUpdateEvals} 
+                  />
+                )}
                 {activeTab === 'match-stats' && currentData && <MatchStatsSection stats={currentData.matchStats || []} onSave={handleUpdateStats} />}
                 {activeTab === 'test-results' && currentData && <TestResultsSection tests={currentData.testResults || []} onSave={handleUpdateTests} />}
                 {activeTab === 'report' && currentData && (
