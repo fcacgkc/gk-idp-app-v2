@@ -906,7 +906,7 @@ const GoalForm = ({
         <div className="flex gap-2">
           <button 
             onClick={() => exportToPDF('interview-sheet', `面談シート_${selectedGrade}`)}
-            className="p-2 bg-zinc-100 text-zinc-600 rounded-xl hover:bg-zinc-200 transition-all flex items-center gap-2 text-sm font-bold"
+            className="px-4 py-2 bg-zinc-100 hover:bg-emerald-50 hover:text-emerald-600 text-zinc-600 rounded-xl transition-all flex items-center gap-2 text-sm font-bold border border-transparent hover:border-emerald-200"
           >
             <Download size={18} />
             PDF出力
@@ -1194,7 +1194,7 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
           </h3>
           <button 
             onClick={() => exportToPDF('match-stats', '試合スタッツ')}
-            className="p-2 bg-zinc-100 text-zinc-600 rounded-xl hover:bg-zinc-200 transition-all flex items-center gap-2 text-xs font-bold"
+            className="px-3 py-2 bg-zinc-100 hover:bg-emerald-50 hover:text-emerald-600 text-zinc-600 rounded-xl transition-all flex items-center gap-2 text-xs font-bold border border-transparent hover:border-emerald-200"
           >
             <Download size={16} />
             PDF出力
@@ -2138,13 +2138,18 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
               </button>
             ))}
           </div>
-          <button 
-            onClick={() => exportToPDF('report-view', `レポート_${player.name}_${selectedGrade}_${selectedPeriod}`)}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold flex items-center gap-2"
-          >
-            <FileText size={16} />
-            PDF出力
-          </button>
+          <div className="flex items-center gap-3">
+            <p className="text-[10px] text-zinc-400 font-bold hidden md:block max-w-[150px] leading-tight text-right">
+              PDF出力が動作しない場合は<br />Ctrl+Pで印刷をお試しください
+            </p>
+            <button 
+              onClick={() => exportToPDF('report-view', `レポート_${player.name}_${selectedGrade}_${selectedPeriod}`)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 transition-colors text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-600/20"
+            >
+              <FileText size={16} />
+              PDF出力
+            </button>
+          </div>
         </div>
       </div>
 

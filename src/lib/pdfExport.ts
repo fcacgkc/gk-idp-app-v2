@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
 /**
@@ -13,43 +13,55 @@ export const exportToPDF = async (elementId: string, fileName: string) => {
     return;
   }
 
+  // Pre-capture scroll position
+  const originalScrollPos = window.scrollY;
+  
   try {
-    // Create a canvas from the element
+    // Show a loading cursor
+    document.body.style.cursor = 'wait';
+
+    // Capture with html2canvas
     const canvas = await html2canvas(element, {
-      scale: 2, // Higher scale for better quality
+      scale: 2, // 2x for better quality
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
+      // Better capture of hidden/offscreen elements
+      windowWidth: element.scrollWidth,
+      windowHeight: element.scrollHeight,
     });
 
-    const imgData = canvas.toDataURL('image/png');
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
     
-    // Calculate PDF dimensions
+    // PDF setup (A4: 210mm x 297mm)
     const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-    // If the content is longer than one page, we might need to handle multiple pages.
-    // For now, let's just fit it to one page or allow it to be long.
-    // Standard A4 is 210 x 297 mm.
+    const pdfWidth = 210;
+    const pdfHeight = 297;
     
-    let heightLeft = pdfHeight;
+    const imgProps = pdf.getImageProperties(imgData);
+    const renderedImgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    
+    let heightLeft = renderedImgHeight;
     let position = 0;
-    const pageHeight = pdf.internal.pageSize.getHeight();
 
-    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-    heightLeft -= pageHeight;
+    // Add first page
+    pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, renderedImgHeight, undefined, 'FAST');
+    heightLeft -= pdfHeight;
 
-    while (heightLeft >= 0) {
-      position = heightLeft - pdfHeight;
+    // Add subsequent pages if content is long
+    while (heightLeft > 0) {
+      position = heightLeft - renderedImgHeight;
       pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, renderedImgHeight, undefined, 'FAST');
+      heightLeft -= pdfHeight;
     }
 
     pdf.save(`${fileName}.pdf`);
   } catch (error) {
     console.error('Error generating PDF:', error);
+    alert('PDFの生成中にエラーが発生しました。別タブで開いて再度お試しいただくか、ブラウザの印刷機能（Ctrl+P）をご利用ください。');
+  } finally {
+    document.body.style.cursor = 'default';
+    window.scrollTo(0, originalScrollPos);
   }
 };
