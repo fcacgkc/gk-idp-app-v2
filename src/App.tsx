@@ -859,10 +859,20 @@ const GoalForm = ({
   onSave: (goals: IDPGoals) => void 
 }) => {
   const [formData, setFormData] = useState<IDPGoals>(goals || { graduationGoal: '', periods: {} });
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     setFormData(goals || { graduationGoal: '', periods: {} });
   }, [goals]);
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      await exportToPDF('interview-sheet', `面談シート_${selectedGrade}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const updateField = (period: string, field: string, value: string) => {
     const key = `${selectedGrade}_${period}`;
@@ -905,11 +915,21 @@ const GoalForm = ({
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={() => exportToPDF('interview-sheet', `面談シート_${selectedGrade}`)}
-            className="px-4 py-2 bg-zinc-100 hover:bg-emerald-50 hover:text-emerald-600 text-zinc-600 rounded-xl transition-all flex items-center gap-2 text-sm font-bold border border-transparent hover:border-emerald-200"
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            className={cn(
+              "px-4 py-2 transition-all flex items-center gap-2 text-sm font-bold rounded-xl border",
+              isExporting
+                ? "bg-zinc-50 text-zinc-400 border-zinc-100 cursor-wait"
+                : "bg-zinc-100 hover:bg-emerald-50 hover:text-emerald-600 text-zinc-600 border-transparent hover:border-emerald-200"
+            )}
           >
-            <Download size={18} />
-            PDF出力
+            {isExporting ? (
+              <div className="w-4 h-4 border-2 border-zinc-300 border-t-emerald-600 rounded-full animate-spin" />
+            ) : (
+              <Download size={18} />
+            )}
+            {isExporting ? '作成中...' : 'PDF出力'}
           </button>
         </div>
       </div>
@@ -1032,6 +1052,7 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'monthly' | 'period'>('list');
+  const [isExporting, setIsExporting] = useState(false);
   
   const initialStat: MatchStats = {
     id: '',
@@ -1048,6 +1069,15 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
   };
 
   const [newStat, setNewStat] = useState<MatchStats>(initialStat);
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      await exportToPDF('match-stats', '試合スタッツ');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const calculateRate = (success: number, total: number) => {
     if (!total || total === 0) return null;
@@ -1193,11 +1223,21 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
             試合スタッツ
           </h3>
           <button 
-            onClick={() => exportToPDF('match-stats', '試合スタッツ')}
-            className="px-3 py-2 bg-zinc-100 hover:bg-emerald-50 hover:text-emerald-600 text-zinc-600 rounded-xl transition-all flex items-center gap-2 text-xs font-bold border border-transparent hover:border-emerald-200"
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            className={cn(
+              "px-3 py-2 transition-all flex items-center gap-2 text-xs font-bold rounded-xl border",
+              isExporting
+                ? "bg-zinc-50 text-zinc-400 border-zinc-100 cursor-wait"
+                : "bg-zinc-100 hover:bg-emerald-50 hover:text-emerald-600 text-zinc-600 border-transparent hover:border-emerald-200"
+            )}
           >
-            <Download size={16} />
-            PDF出力
+            {isExporting ? (
+              <div className="w-3.5 h-3.5 border-2 border-zinc-300 border-t-emerald-600 rounded-full animate-spin" />
+            ) : (
+              <Download size={16} />
+            )}
+            {isExporting ? '作成中...' : 'PDF出力'}
           </button>
         </div>
         <div className="flex gap-2 bg-zinc-100 p-1 rounded-xl">
@@ -2104,6 +2144,17 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
     return [...testResults].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
   }, [data.testResults]);
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      await exportToPDF('report-view', `レポート_${player.name}_${selectedGrade}_${selectedPeriod}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20">
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-zinc-100 space-y-4">
@@ -2139,11 +2190,26 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
             ))}
           </div>
           <button 
-            onClick={() => exportToPDF('report-view', `レポート_${player.name}_${selectedGrade}_${selectedPeriod}`)}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 transition-colors text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-600/20"
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            className={cn(
+              "px-4 py-2 transition-all text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg",
+              isExporting 
+                ? "bg-zinc-400 cursor-wait shadow-none" 
+                : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 active:scale-95"
+            )}
           >
-            <FileText size={16} />
-            PDF出力
+            {isExporting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>作成中...</span>
+              </>
+            ) : (
+              <>
+                <FileText size={16} />
+                <span>PDF出力</span>
+              </>
+            )}
           </button>
         </div>
       </div>
