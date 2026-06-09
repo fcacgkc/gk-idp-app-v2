@@ -1153,12 +1153,12 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
         <div className="text-sm font-bold text-red-500">{s.highBall.errors}</div>
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
-        <div className="text-[10px] text-zinc-400 font-bold uppercase">1v1B成功率</div>
+        <div className="text-[10px] text-zinc-400 font-bold">1v1B成功率</div>
         <div className="text-sm font-bold">{formatRate(s.oneVsOneB.successes, s.oneVsOneB.attacks)}</div>
         <div className="text-[9px] text-zinc-400">({s.oneVsOneB.successes}/{s.oneVsOneB.attacks})</div>
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
-        <div className="text-[10px] text-zinc-400 font-bold uppercase">1v1B判断ミス</div>
+        <div className="text-[10px] text-zinc-400 font-bold">1v1B判断ミス</div>
         <div className="text-sm font-bold text-red-500">{s.oneVsOneB.errors}</div>
       </div>
       <div className="p-3 bg-zinc-50 rounded-xl">
@@ -1344,7 +1344,7 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="text-[10px] font-bold text-zinc-400 uppercase">1v1B (1対1ブロック)</div>
+                  <div className="text-[10px] font-bold text-zinc-400">1v1B</div>
                   <div className="flex gap-1">
                     <div className="flex-1">
                       <div className="text-[8px] text-zinc-400 mb-1">アタック</div>
@@ -2289,7 +2289,7 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
               { label: 'FWへのパス成功率', val: calculateRate(periodStats.passFW.successes, periodStats.passFW.total), unit: '%' },
             ].map((s, i) => (
               <div key={i} className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
-                <div className="text-[10px] font-bold text-zinc-400 uppercase mb-1">{s.label}</div>
+                <div className="text-[10px] font-bold text-zinc-400 mb-1">{s.label}</div>
                 <div className="text-xl font-black text-zinc-900">
                   {s.val === null ? '-' : s.val}
                   {s.val !== null && <span className="text-xs ml-0.5">{s.unit}</span>}
