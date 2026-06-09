@@ -901,7 +901,7 @@ const GoalForm = ({
   };
 
   return (
-    <div className="bg-white p-8 rounded-2xl shadow-sm border border-zinc-100 max-w-4xl mx-auto" id="interview-sheet">
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-zinc-100 max-w-4xl mx-auto print:shadow-none print:border-none print:p-0 print-page" id="interview-sheet">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
@@ -968,7 +968,7 @@ const GoalForm = ({
         {PERIODS.map((label) => {
           const pData = getPeriodData(label);
           return (
-            <section key={label} className="p-6 border border-zinc-100 rounded-2xl">
+            <section key={label} className="p-6 border border-zinc-100 rounded-2xl print-page">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-black text-zinc-900">
                   <span className="text-sm font-bold text-zinc-400 block mb-1">{selectedGrade}</span>
@@ -2174,205 +2174,203 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
         </div>
       </div>
 
-      <div className="bg-white p-12 rounded-3xl shadow-xl border border-zinc-100 print:shadow-none print:border-none" id="report-view">
-        {/* Header */}
-        <div className="flex justify-between items-start border-b-2 border-zinc-900 pb-8 mb-8">
-          <div>
-            <h1 className="text-4xl font-black text-zinc-900 mb-2 uppercase tracking-tighter">GK IDP REPORT</h1>
-            <div className="flex items-center gap-4 text-zinc-500 font-bold">
-              <span className="flex items-center gap-1"><Users size={16} /> {player.name}</span>
-              <span className="flex items-center gap-1">
-                <Calendar size={16} /> {selectedGrade} {selectedPeriod}
-              </span>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Overall Rating</div>
-            <div className="text-5xl font-black text-emerald-600">
-              {(() => {
-                if (!currentEval || !currentEval.scores) return '-';
-                const scores = Object.values(currentEval.scores) as number[];
-                if (scores.length === 0) return '-';
-                return getRankLabel(scores.reduce((a, b) => a + b, 0) / scores.length);
-              })()}
-            </div>
-          </div>
-        </div>
-
-        {/* Profile Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-12 bg-zinc-50 p-6 rounded-2xl border border-zinc-100">
-          <div>
-            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Grade</div>
-            <div className="text-lg font-bold text-zinc-900">{data.profile?.grade || '-'}</div>
-          </div>
-          <div>
-            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Height / Weight</div>
-            <div className="text-lg font-bold text-zinc-900">{data.profile?.height}cm / {data.profile?.weight}kg</div>
-          </div>
-          <div>
-            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Dominant Foot</div>
-            <div className="text-lg font-bold text-zinc-900">{data.profile?.dominantFoot || '-'}</div>
-          </div>
-          <div>
-            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Dominant Arm</div>
-            <div className="text-lg font-bold text-zinc-900">{data.profile?.dominantArm || '-'}</div>
-          </div>
-          <div>
-            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Position</div>
-            <div className="text-lg font-bold text-zinc-900">GK</div>
-          </div>
-        </div>
-
-        {/* Vision Section */}
-        <div className="mb-12">
-          <h2 className="text-xl font-bold border-l-4 border-emerald-500 pl-4 mb-4">卒業時の目標</h2>
-          <div className="p-6 bg-zinc-50 rounded-2xl italic text-zinc-700 leading-relaxed">
-            "{data.goals?.gradeGoals?.[selectedGrade] || data.goals?.graduationGoal || '未設定'}"
-          </div>
-        </div>
-
-        {/* Match Stats Summary */}
-        <div className="mb-12">
-          <h2 className="text-xl font-bold mb-6 border-l-4 border-emerald-500 pl-4">{selectedPeriod} 試合スタッツ合計</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: 'PA外セーブ率', val: calculateRate(periodStats.paOutside.saves, periodStats.paOutside.shots), unit: '%' },
-              { label: 'PA内セーブ率', val: calculateRate(periodStats.paInside.saves, periodStats.paInside.shots), unit: '%' },
-              { label: 'ハイボール成功率', val: calculateRate(periodStats.highBall.successes, periodStats.highBall.attacks), unit: '%' },
-              { label: 'ハイボール判断ミス', val: periodStats.highBall.errors, unit: '回' },
-              { label: '1v1B成功率', val: calculateRate(periodStats.oneVsOneB.successes, periodStats.oneVsOneB.attacks), unit: '%' },
-              { label: '1v1B判断ミス', val: periodStats.oneVsOneB.errors, unit: '回' },
-              { label: 'スイーパー成功率', val: calculateRate(periodStats.sweeper.successes, periodStats.sweeper.attacks), unit: '%' },
-              { label: 'スイーパー判断ミス', val: periodStats.sweeper.errors, unit: '回' },
-              { label: 'DFへのパス成功率', val: calculateRate(periodStats.passDF.successes, periodStats.passDF.total), unit: '%' },
-              { label: 'MFへのパス成功率', val: calculateRate(periodStats.passMF.successes, periodStats.passMF.total), unit: '%' },
-              { label: 'FWへのパス成功率', val: calculateRate(periodStats.passFW.successes, periodStats.passFW.total), unit: '%' },
-            ].map((s, i) => (
-              <div key={i} className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
-                <div className="text-[10px] font-bold text-zinc-400 mb-1">{s.label}</div>
-                <div className="text-xl font-black text-zinc-900">
-                  {s.val === null ? '-' : s.val}
-                  {s.val !== null && <span className="text-xs ml-0.5">{s.unit}</span>}
-                </div>
+      <div className="bg-white p-12 rounded-3xl shadow-xl border border-zinc-100 print:shadow-none print:border-none print:p-0" id="report-view">
+        <div className="print-page">
+          {/* Header */}
+          <div className="flex justify-between items-start border-b-2 border-zinc-900 pb-8 mb-8">
+            <div>
+              <h1 className="text-4xl font-black text-zinc-900 mb-2 uppercase tracking-tighter">GK IDP REPORT</h1>
+              <div className="flex items-center gap-4 text-zinc-500 font-bold">
+                <span className="flex items-center gap-1"><Users size={16} /> {player.name}</span>
+                <span className="flex items-center gap-1">
+                  <Calendar size={16} /> {selectedGrade} {selectedPeriod}
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Latest Test Results */}
-        {latestTest && (
-          <div className="mb-12">
-            <h2 className="text-xl font-bold mb-6 border-l-4 border-emerald-500 pl-4">直近のテスト結果 ({latestTest.date})</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-zinc-500 uppercase flex items-center gap-2"><Dribbble size={16} /> キック飛距離 (平均)</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: '右足', val: calculateAvg(latestTest.kick.right) },
-                    { label: '左足', val: calculateAvg(latestTest.kick.left) },
-                    { label: 'パント', val: calculateAvg(latestTest.kick.punt) },
-                  ].map((k, i) => (
-                    <div key={i} className="bg-zinc-50 p-3 rounded-xl border border-zinc-100 text-center">
-                      <div className="text-[10px] font-bold text-zinc-400 mb-1">{k.label}</div>
-                      <div className="text-lg font-black text-zinc-900">{k.val}m</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-zinc-500 uppercase flex items-center gap-2"><Target size={16} /> シュートストップ率</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {[
-                    { label: '14m (Short)', grid: latestTest.shootStop.short },
-                    { label: '19m (Long)', grid: latestTest.shootStop.long },
-                  ].map((s, i) => {
-                    const totalSaves = s.grid.flat().reduce((acc, curr) => acc + curr[0], 0);
-                    const totalShots = s.grid.flat().reduce((acc, curr) => acc + curr[1], 0);
-                    const rate = totalShots > 0 ? Math.round((totalSaves / totalShots) * 100) : null;
-                    return (
-                      <div key={i} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 space-y-4">
-                        <div className="flex justify-between items-end">
-                          <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{s.label}</div>
-                          <div className={cn("text-xl font-black", getShotStopColor(rate))}>{formatRate(totalSaves, totalShots)} <span className="text-[10px] text-zinc-400">Total</span></div>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[8px] font-bold text-zinc-400 px-1">
-                            <span>左</span>
-                            <span>右</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-1 bg-zinc-900 p-1 rounded-lg aspect-square">
-                            {s.grid.map((row, r) => (
-                              row.map((cell, c) => {
-                                const cellRate = cell[1] > 0 ? Math.round((cell[0] / cell[1]) * 100) : null;
-                                const labels = [
-                                  ['左上', '中上', '右上'],
-                                  ['左中', '真中', '右中'],
-                                  ['左下', '中下', '右下']
-                                ];
-                                return (
-                                  <div key={`${r}-${c}`} className="bg-zinc-800 rounded flex flex-col items-center justify-center text-white p-1">
-                                    <div className="text-[7px] font-bold text-zinc-500 mb-0.5">{labels[r][c]}</div>
-                                    <div className="text-[8px] font-bold text-zinc-400">{cell[0]}/{cell[1]}</div>
-                                    <div className={cn("text-xs font-black", getShotStopColor(cellRate))}>{formatRate(cell[0], cell[1])}</div>
-                                  </div>
-                                );
-                              })
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Overall Rating</div>
+              <div className="text-5xl font-black text-emerald-600">
+                {(() => {
+                  if (!currentEval || !currentEval.scores) return '-';
+                  const scores = Object.values(currentEval.scores) as number[];
+                  if (scores.length === 0) return '-';
+                  return getRankLabel(scores.reduce((a, b) => a + b, 0) / scores.length);
+                })()}
               </div>
             </div>
           </div>
-        )}
 
-        {/* Goals Section */}
-        <div className="mb-12">
-          <h2 className="text-xl font-bold mb-6 border-l-4 border-emerald-500 pl-4">定期目標 & 振り返り</h2>
-          <div className="space-y-8">
-            {PERIODS.map((pLabel, i) => {
-              const pData = getGoalData(pLabel);
-              return (
-                <div key={i} className="border border-zinc-200 rounded-2xl overflow-hidden">
-                  <div className="bg-zinc-900 text-white p-4 flex justify-between items-center">
-                    <h3 className="font-black uppercase tracking-widest">
-                      <span className="text-[10px] text-zinc-500 block mb-0.5">{selectedGrade}</span>
-                      {pLabel}
-                    </h3>
-                    <span className="text-xs font-bold text-zinc-400">面談日: {pData?.interviewDate || '-'}</span>
+          {/* Profile Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8 bg-zinc-50 p-6 rounded-2xl border border-zinc-100">
+            <div>
+              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Grade</div>
+              <div className="text-lg font-bold text-zinc-900">{data.profile?.grade || '-'}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Height / Weight</div>
+              <div className="text-lg font-bold text-zinc-900">{data.profile?.height}cm / {data.profile?.weight}kg</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Dominant Foot</div>
+              <div className="text-lg font-bold text-zinc-900">{data.profile?.dominantFoot || '-'}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Dominant Arm</div>
+              <div className="text-lg font-bold text-zinc-900">{data.profile?.dominantArm || '-'}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Position</div>
+              <div className="text-lg font-bold text-zinc-900">GK</div>
+            </div>
+          </div>
+
+          {/* Vision Section */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold border-l-4 border-emerald-500 pl-4 mb-4">卒業時の目標</h2>
+            <div className="p-6 bg-zinc-50 rounded-2xl italic text-zinc-700 leading-relaxed">
+              "{data.goals?.gradeGoals?.[selectedGrade] || data.goals?.graduationGoal || '未設定'}"
+            </div>
+          </div>
+
+          {/* Match Stats Summary */}
+          <div className="mb-0">
+            <h2 className="text-xl font-bold mb-6 border-l-4 border-emerald-500 pl-4">{selectedPeriod} 試合スタッツ合計</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'PA外セーブ率', val: calculateRate(periodStats.paOutside.saves, periodStats.paOutside.shots), unit: '%' },
+                { label: 'PA内セーブ率', val: calculateRate(periodStats.paInside.saves, periodStats.paInside.shots), unit: '%' },
+                { label: 'ハイボール成功率', val: calculateRate(periodStats.highBall.successes, periodStats.highBall.attacks), unit: '%' },
+                { label: 'ハイボール判断ミス', val: periodStats.highBall.errors, unit: '回' },
+                { label: '1v1B成功率', val: calculateRate(periodStats.oneVsOneB.successes, periodStats.oneVsOneB.attacks), unit: '%' },
+                { label: '1v1B判断ミス', val: periodStats.oneVsOneB.errors, unit: '回' },
+                { label: 'スイーパー成功率', val: calculateRate(periodStats.sweeper.successes, periodStats.sweeper.attacks), unit: '%' },
+                { label: 'スイーパー判断ミス', val: periodStats.sweeper.errors, unit: '回' },
+                { label: 'DFへのパス成功率', val: calculateRate(periodStats.passDF.successes, periodStats.passDF.total), unit: '%' },
+                { label: 'MFへのパス成功率', val: calculateRate(periodStats.passMF.successes, periodStats.passMF.total), unit: '%' },
+                { label: 'FWへのパス成功率', val: calculateRate(periodStats.passFW.successes, periodStats.passFW.total), unit: '%' },
+              ].map((s, i) => (
+                <div key={i} className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 print-no-break">
+                  <div className="text-[10px] font-bold text-zinc-400 mb-1">{s.label}</div>
+                  <div className="text-xl font-black text-zinc-900">
+                    {s.val === null ? '-' : s.val}
+                    {s.val !== null && <span className="text-xs ml-0.5">{s.unit}</span>}
                   </div>
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                      <div>
-                        <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">パフォーマンス目標</div>
-                        <div className="text-sm font-bold text-zinc-900 leading-relaxed">{pData?.performanceGoal || '-'}</div>
-                        {pData?.metrics && (
-                          <div className="mt-2 inline-block px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-100">
-                            数値目標: {pData.metrics}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="print-page">
+          {/* Latest Test Results */}
+          {latestTest && (
+            <div className="mb-12">
+              <h2 className="text-xl font-bold mb-6 border-l-4 border-emerald-500 pl-4">直近のテスト結果 ({latestTest.date})</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4 print-no-break">
+                  <h3 className="text-sm font-bold text-zinc-500 uppercase flex items-center gap-2"><Dribbble size={16} /> キック飛距離 (平均)</h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: '右足', val: calculateAvg(latestTest.kick.right) },
+                      { label: '左足', val: calculateAvg(latestTest.kick.left) },
+                      { label: 'パント', val: calculateAvg(latestTest.kick.punt) },
+                    ].map((k, i) => (
+                      <div key={i} className="bg-zinc-50 p-3 rounded-xl border border-zinc-100 text-center">
+                        <div className="text-[10px] font-bold text-zinc-400 mb-1">{k.label}</div>
+                        <div className="text-lg font-black text-zinc-900">{k.val}m</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-4 print-no-break">
+                  <h3 className="text-sm font-bold text-zinc-500 uppercase flex items-center gap-2"><Target size={16} /> シュートストップ率</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                      { label: '14m (Short)', grid: latestTest.shootStop.short },
+                      { label: '19m (Long)', grid: latestTest.shootStop.long },
+                    ].map((s, i) => {
+                      const totalSaves = s.grid.flat().reduce((acc, curr) => acc + curr[0], 0);
+                      const totalShots = s.grid.flat().reduce((acc, curr) => acc + curr[1], 0);
+                      const rate = totalShots > 0 ? Math.round((totalSaves / totalShots) * 100) : null;
+                      return (
+                        <div key={i} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 space-y-4">
+                          <div className="flex justify-between items-end">
+                            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{s.label}</div>
+                            <div className={cn("text-xl font-black", getShotStopColor(rate))}>{formatRate(totalSaves, totalShots)} <span className="text-[10px] text-zinc-400">Total</span></div>
                           </div>
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">プロセス目標</div>
-                        <div className="text-sm text-zinc-600 leading-relaxed whitespace-pre-wrap">{pData?.processGoal || '-'}</div>
-                      </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[8px] font-bold text-zinc-400 px-1">
+                              <span>左</span>
+                              <span>右</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-1 bg-zinc-900 p-1 rounded-lg aspect-square">
+                              {s.grid.map((row, r) => (
+                                row.map((cell, c) => {
+                                  const cellRate = cell[1] > 0 ? Math.round((cell[0] / cell[1]) * 100) : null;
+                                  const labels = [
+                                    ['左上', '中上', '右上'],
+                                    ['左中', '真中', '右中'],
+                                    ['左下', '中下', '右下']
+                                  ];
+                                  return (
+                                    <div key={`${r}-${c}`} className="bg-zinc-800 rounded flex flex-col items-center justify-center text-white p-1">
+                                      <div className="text-[7px] font-bold text-zinc-500 mb-0.5">{labels[r][c]}</div>
+                                      <div className="text-[8px] font-bold text-zinc-400">{cell[0]}/{cell[1]}</div>
+                                      <div className={cn("text-xs font-black", getShotStopColor(cellRate))}>{formatRate(cell[0], cell[1])}</div>
+                                    </div>
+                                  );
+                                })
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Goals Section */}
+          <div className="mb-0">
+            <h2 className="text-xl font-bold mb-6 border-l-4 border-emerald-500 pl-4">定期目標 & 振り返り</h2>
+            <div className="space-y-4">
+              {PERIODS.map((pLabel, i) => {
+                const pData = getGoalData(pLabel);
+                return (
+                  <div key={i} className="border border-zinc-200 rounded-2xl overflow-hidden print-no-break">
+                    <div className="bg-zinc-900 text-white p-3 flex justify-between items-center">
+                      <h3 className="font-black uppercase tracking-widest text-sm">
+                        <span className="text-[9px] text-zinc-500 block">{selectedGrade}</span>
+                        {pLabel}
+                      </h3>
+                      <span className="text-[10px] font-bold text-zinc-400">面談日: {pData?.interviewDate || '-'}</span>
                     </div>
-                    <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
-                      <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <MessageSquare size={12} />
-                        振り返り
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-4">
+                        <div>
+                          <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">パフォーマンス目標</div>
+                          <div className="text-xs font-bold text-zinc-900 leading-relaxed">{pData?.performanceGoal || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">プロセス目標</div>
+                          <div className="text-xs text-zinc-600 leading-relaxed whitespace-pre-wrap">{pData?.processGoal || '-'}</div>
+                        </div>
                       </div>
-                      <div className="text-sm text-zinc-600 leading-relaxed whitespace-pre-wrap italic">
-                        {pData?.review || '未記入'}
+                      <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-100">
+                        <div className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1 flex items-center gap-2">
+                          振り返り
+                        </div>
+                        <div className="text-xs text-zinc-600 leading-relaxed whitespace-pre-wrap italic">
+                          {pData?.review || '未記入'}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -2380,7 +2378,7 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
         <div className="space-y-12 mb-12">
           <h2 className="text-2xl font-black border-l-8 border-emerald-500 pl-4 mb-8">カテゴリー別評価 & フィードバック</h2>
           
-          <div className="grid grid-cols-1 gap-12">
+          <div className="space-y-8">
             {CATEGORIES.map(cat => {
               const items = EVAL_ITEMS[cat] || [];
               const scores = items.map(item => currentEval?.scores?.[item] || 0) as number[];
@@ -2389,8 +2387,11 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
               const feedback = currentEval?.categoryFeedback?.[cat] || (cat === 'Technical' ? currentEval?.feedback : '');
               const videoUrl = currentEval?.categoryVideoUrls?.[cat] || (cat === 'Technical' ? currentEval?.videoUrl : '');
               
+              // Major categories get their own page
+              const isMajorCategory = cat === 'Technical' || cat === 'Tactical';
+              
               return (
-                <div key={cat} className="bg-zinc-50 rounded-3xl overflow-hidden border border-zinc-100 shadow-sm">
+                <div key={cat} className={cn("bg-zinc-50 rounded-3xl overflow-hidden border border-zinc-100 shadow-sm", isMajorCategory && "print-page")}>
                   <div className="bg-zinc-900 p-6 flex justify-between items-center text-white">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center font-black text-lg">
@@ -2419,7 +2420,7 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
                         {items.map(item => {
                           const score = currentEval?.scores?.[item] || 0;
                           return (
-                            <div key={item} className="flex justify-between items-center bg-white p-3 rounded-xl border border-zinc-100">
+                            <div key={item} className="flex justify-between items-center bg-white p-3 rounded-xl border border-zinc-100 print-no-break">
                               <span className="text-sm font-bold text-zinc-700">{item}</span>
                               <div className="flex items-center gap-2">
                                 <div className={cn(
@@ -2452,7 +2453,7 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
                       </div>
 
                       {videoUrl && (
-                        <div className="space-y-3">
+                        <div className="space-y-3 no-print">
                           <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
                             <Video size={14} />
                             エビデンス動画
@@ -2463,7 +2464,7 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
                             </div>
                             <div className="flex-1 overflow-hidden">
                               <a href={videoUrl} target="_blank" className="text-emerald-600 text-sm font-bold truncate block hover:underline">
-                                {videoUrl}
+                                動画リンクはこちら
                               </a>
                             </div>
                           </div>

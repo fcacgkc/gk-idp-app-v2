@@ -99,6 +99,8 @@
     background: white !important;
     padding: 0 !important;
     margin: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   
   main {
@@ -117,11 +119,7 @@
     padding: 0 !important;
   }
 
-  .print-break-inside-avoid {
-    break-inside: avoid;
-  }
-
-  /* Print-specific styles for our identifiable containers */
+  /* Core print containers */
   #report-view, #interview-sheet, #match-stats {
     padding: 0 !important;
     margin: 0 !important;
@@ -133,15 +131,56 @@
     color: black !important;
   }
 
-  /* Ensure text is dark and legible */
+  /* Page Break Controls */
+  .print-page {
+    page-break-after: always;
+    break-after: page;
+    min-height: 270mm; /* Near A4 height to prevent spill-over */
+    display: flex;
+    flex-direction: column;
+    padding: 10mm 0;
+  }
+
+  .print-page:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  /* Scaling / Compaction */
   .text-zinc-400, .text-zinc-500 {
     color: #52525b !important;
   }
 
-  /* Fix for charts and layout grids in print */
   .grid {
     display: grid !important;
+  }
+
+  /* Scale down fonts and padding for print */
+  .p-8 { padding: 1rem !important; }
+  .p-12 { padding: 1.5rem !important; }
+  .p-6 { padding: 0.75rem !important; }
+  .p-4 { padding: 0.5rem !important; }
+  .gap-8 { gap: 1rem !important; }
+  .gap-6 { gap: 0.75rem !important; }
+  
+  h1 { font-size: 1.25rem !important; }
+  h2 { font-size: 1.125rem !important; }
+  h3 { font-size: 0.875rem !important; }
+  p, div { font-size: 0.8rem !important; }
+  .text-xs { font-size: 0.7rem !important; }
+  .text-sm { font-size: 0.75rem !important; }
+  .text-xl { font-size: 1rem !important; }
+  .text-2xl { font-size: 1.25rem !important; }
+
+  /* Ensure charts fit */
+  .recharts-responsive-container {
+    max-height: 220px !important;
+  }
+
+  /* Ensure items don't break mid-air inside a page grid */
+  .print-no-break {
     page-break-inside: avoid;
+    break-inside: avoid;
   }
 }
 
