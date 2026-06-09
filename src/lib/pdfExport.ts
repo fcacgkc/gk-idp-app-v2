@@ -69,9 +69,33 @@ export const exportToPDF = async (elementId: string, fileName: string) => {
             el.style.overflow = 'visible';
             el.style.position = 'relative';
             el.style.padding = '20px';
-            el.style.backgroundColor = 'white';
+            el.style.backgroundColor = '#ffffff';
             el.style.width = '1120px'; // Fit for A4 content width roughly
             
+            // SANITIZER: html2canvas does not support oklch colors.
+            // We traverse the clone and replace oklch colors with HEX fallbacks.
+            const allElements = el.getElementsByTagName('*');
+            for (let i = 0; i < allElements.length; i++) {
+              const node = allElements[i] as HTMLElement;
+              
+              // Remove shadows that might use oklch or complex filters
+              const style = window.getComputedStyle(node);
+              if (style.boxShadow && (style.boxShadow.includes('oklch') || style.boxShadow.includes('color-mix'))) {
+                node.style.boxShadow = 'none';
+              }
+
+              // Replace oklch/color-mix background or text colors with solid fallbacks
+              ['backgroundColor', 'color', 'borderColor'].forEach((prop) => {
+                const val = (node.style as any)[prop] || style.getPropertyValue(prop);
+                if (val && (val.includes('oklch') || val.includes('color-mix'))) {
+                  // Fallback to solid colors if problematic detected
+                  if (prop === 'backgroundColor') node.style.backgroundColor = '#ffffff';
+                  if (prop === 'color') node.style.color = '#18181b';
+                  if (prop === 'borderColor') node.style.borderColor = '#e4e4e7';
+                }
+              });
+            }
+
             // Fix visibility of charts and graphs
             const svgs = el.querySelectorAll('svg');
             svgs.forEach(svg => {
