@@ -15,7 +15,8 @@ export interface Player {
 }
 
 export interface IDPGoals {
-  graduationGoal: string;
+  graduationGoal?: string; // Legacy / Shared
+  gradeGoals?: Record<string, string>; // Maps "Grade" to "Graduation Goal"
   periods?: Record<string, GoalSet>; // Key format: "Grade_Period" (e.g., "高校1年生_4-7月")
   period1?: GoalSet; // Legacy support
   period2?: GoalSet; // Legacy support

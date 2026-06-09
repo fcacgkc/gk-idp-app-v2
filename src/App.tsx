@@ -99,6 +99,11 @@ const INITIAL_PLAYERS: Player[] = [
 
 const DEFAULT_GOALS: IDPGoals = {
   graduationGoal: 'Jリーグで活躍する、圧倒的な守備範囲を持つGK',
+  gradeGoals: {
+    '高校2年生': 'Jリーグで活躍する、圧倒的な守備範囲を持つGK',
+    '高校1年生': 'フィジカル基盤を構築し、Aチームでの出場機会を増やす',
+    '高校3年生': 'プロ契約の獲得と全国大会制覇'
+  },
   periods: {
     '高校2年生_4-7月': { performanceGoal: '県大会ベスト4進出', processGoal: 'シュートストップ率80%以上', metrics: 'セービング成功率', interviewDate: '2025-04-10', review: '' },
     '高校2年生_8-11月': { performanceGoal: 'リーグ戦全試合出場', processGoal: 'コーチングの質の向上', metrics: '無失点試合数', interviewDate: '2025-08-15', review: '' },
@@ -943,8 +948,17 @@ const GoalForm = ({
           <div className="space-y-2">
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">どんな選手になるのか</label>
             <textarea 
-              value={formData.graduationGoal || ''}
-              onChange={e => setFormData({...formData, graduationGoal: e.target.value})}
+              value={formData.gradeGoals?.[selectedGrade] || formData.graduationGoal || ''}
+              onChange={e => {
+                const newVal = e.target.value;
+                setFormData(prev => ({
+                  ...prev,
+                  gradeGoals: {
+                    ...(prev.gradeGoals || {}),
+                    [selectedGrade]: newVal
+                  }
+                }));
+              }}
               className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none h-24"
               placeholder="例: プロクラブで活躍する、圧倒的な守備範囲を持つGK"
             />
@@ -2213,7 +2227,7 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
         <div className="mb-12">
           <h2 className="text-xl font-bold border-l-4 border-emerald-500 pl-4 mb-4">卒業時の目標</h2>
           <div className="p-6 bg-zinc-50 rounded-2xl italic text-zinc-700 leading-relaxed">
-            "{data.goals?.graduationGoal || '未設定'}"
+            "{data.goals?.gradeGoals?.[selectedGrade] || data.goals?.graduationGoal || '未設定'}"
           </div>
         </div>
 
