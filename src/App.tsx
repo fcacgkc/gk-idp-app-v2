@@ -1748,13 +1748,17 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
                               {(() => {
                                 const leftSaves = grid.reduce((acc, row) => acc + row[0][0], 0);
                                 const leftShots = grid.reduce((acc, row) => acc + row[0][1], 0);
+                                const centralSaves = grid.reduce((acc, row) => acc + row[1][0], 0);
+                                const centralShots = grid.reduce((acc, row) => acc + row[1][1], 0);
                                 const rightSaves = grid.reduce((acc, row) => acc + row[2][0], 0);
                                 const rightShots = grid.reduce((acc, row) => acc + row[2][1], 0);
                                 const leftRate = leftShots > 0 ? Math.round((leftSaves / leftShots) * 100) : null;
+                                const centralRate = centralShots > 0 ? Math.round((centralSaves / centralShots) * 100) : null;
                                 const rightRate = rightShots > 0 ? Math.round((rightSaves / rightShots) * 100) : null;
                                 return (
                                   <>
                                     <div className="text-[10px] font-bold text-zinc-400">左: <span className={cn(getShotStopColor(leftRate))}>{formatRate(leftSaves, leftShots)}</span></div>
+                                    <div className="text-[10px] font-bold text-zinc-400">中央: <span className={cn(getShotStopColor(centralRate))}>{formatRate(centralSaves, centralShots)}</span></div>
                                     <div className="text-[10px] font-bold text-zinc-400">右: <span className={cn(getShotStopColor(rightRate))}>{formatRate(rightSaves, rightShots)}</span></div>
                                   </>
                                 );
@@ -1764,6 +1768,7 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
                           </div>
                           <div className="flex justify-between text-[10px] font-bold text-zinc-400 mb-1 px-1">
                             <span>左</span>
+                            <span>中央</span>
                             <span>右</span>
                           </div>
                           <div className="grid grid-cols-3 gap-1 bg-zinc-900 p-1 rounded-lg aspect-square">
@@ -2291,16 +2296,53 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
                     ].map((s, i) => {
                       const totalSaves = s.grid.flat().reduce((acc, curr) => acc + curr[0], 0);
                       const totalShots = s.grid.flat().reduce((acc, curr) => acc + curr[1], 0);
-                      const rate = totalShots > 0 ? Math.round((totalSaves / totalShots) * 100) : null;
+                      const totalRate = totalShots > 0 ? Math.round((totalSaves / totalShots) * 100) : null;
+
+                      const leftSaves = s.grid.reduce((acc, row) => acc + row[0][0], 0);
+                      const leftShots = s.grid.reduce((acc, row) => acc + row[0][1], 0);
+                      
+                      const centralSaves = s.grid.reduce((acc, row) => acc + row[1][0], 0);
+                      const centralShots = s.grid.reduce((acc, row) => acc + row[1][1], 0);
+                      
+                      const rightSaves = s.grid.reduce((acc, row) => acc + row[2][0], 0);
+                      const rightShots = s.grid.reduce((acc, row) => acc + row[2][1], 0);
+
                       return (
                         <div key={i} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 space-y-4">
-                          <div className="flex justify-between items-end">
-                            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{s.label}</div>
-                            <div className={cn("text-xl font-black", getShotStopColor(rate))}>{formatRate(totalSaves, totalShots)} <span className="text-[10px] text-zinc-400">Total</span></div>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{s.label}</div>
+                              <div className={cn("text-xl font-black", getShotStopColor(totalRate))}>
+                                {formatRate(totalSaves, totalShots)} <span className="text-[10px] text-zinc-400">Total</span>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-2 border-t border-zinc-200 pt-2">
+                              <div className="text-center">
+                                <div className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">左</div>
+                                <div className={cn("text-sm font-black", getShotStopColor(leftShots > 0 ? Math.round((leftSaves/leftShots)*100) : null))}>
+                                  {formatRate(leftSaves, leftShots)}
+                                </div>
+                              </div>
+                              <div className="text-center border-x border-zinc-200">
+                                <div className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">中央</div>
+                                <div className={cn("text-sm font-black", getShotStopColor(centralShots > 0 ? Math.round((centralSaves/centralShots)*100) : null))}>
+                                  {formatRate(centralSaves, centralShots)}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">右</div>
+                                <div className={cn("text-sm font-black", getShotStopColor(rightShots > 0 ? Math.round((rightSaves/rightShots)*100) : null))}>
+                                  {formatRate(rightSaves, rightShots)}
+                                </div>
+                              </div>
+                            </div>
                           </div>
+
                           <div className="space-y-1">
                             <div className="flex justify-between text-[8px] font-bold text-zinc-400 px-1">
                               <span>左</span>
+                              <span>中央</span>
                               <span>右</span>
                             </div>
                             <div className="grid grid-cols-3 gap-1 bg-zinc-900 p-1 rounded-lg aspect-square">
