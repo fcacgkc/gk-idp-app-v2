@@ -86,30 +86,62 @@
 }
 
 @media print {
-  header, nav, aside, .no-print, button {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  header, nav, aside, footer, .no-print, button, .flex-none, .fixed {
     display: none !important;
   }
   
   body {
     background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
   
   main {
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible !important;
+    background: transparent !important;
+  }
+
+  /* Reset all containers to be visible and occupy full width */
+  #root, #root > div, main {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .print-break-inside-avoid {
     break-inside: avoid;
   }
 
-  #report-view {
+  /* Print-specific styles for our identifiable containers */
+  #report-view, #interview-sheet, #match-stats {
     padding: 0 !important;
     margin: 0 !important;
     box-shadow: none !important;
     border: none !important;
     width: 100% !important;
+    display: block !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Ensure text is dark and legible */
+  .text-zinc-400, .text-zinc-500 {
+    color: #52525b !important;
+  }
+
+  /* Fix for charts and layout grids in print */
+  .grid {
+    display: grid !important;
+    page-break-inside: avoid;
   }
 }
 
