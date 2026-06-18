@@ -59,6 +59,35 @@ const getRankLabel = (score: number) => {
   return 'C';
 };
 
+const PrintHeader = ({ playerName, grade, period }: { playerName: string; grade?: string; period?: string }) => {
+  return (
+    <div className="hidden print:flex justify-between items-center border-b border-zinc-300 pb-2 mb-6 w-full font-mono text-[9px] text-zinc-500 tracking-wider">
+      <div className="font-bold flex items-center gap-1">
+        <Activity size={10} className="text-emerald-600" />
+        <span>GK INDIVIDUAL DEVELOPMENT PLAN</span>
+      </div>
+      <div className="flex gap-4 items-center font-sans font-medium text-zinc-650">
+        <span className="flex items-center gap-1">
+          <User size={10} className="text-zinc-400" />
+          <span>選手名: <strong className="text-zinc-900 font-extrabold">{playerName}</strong></span>
+        </span>
+        {grade && (
+          <span className="flex items-center gap-1">
+            <Award size={10} className="text-zinc-400" />
+            <span>学年: <strong className="text-zinc-950 font-bold">{grade}</strong></span>
+          </span>
+        )}
+        {period && (
+          <span className="flex items-center gap-1">
+            <Calendar size={10} className="text-zinc-400" />
+            <span>対象期: <strong className="text-zinc-950 font-bold">{period}</strong></span>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const getShotStopColor = (rate: number | null) => {
   if (rate === null) return 'text-zinc-400';
   if (rate < 30) return 'text-red-500';
@@ -902,6 +931,7 @@ const GoalForm = ({
 
   return (
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-zinc-100 max-w-4xl mx-auto print:shadow-none print:border-none print:p-0 print-page" id="interview-sheet">
+      <PrintHeader playerName={profile.name} grade={selectedGrade} />
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
@@ -969,6 +999,7 @@ const GoalForm = ({
           const pData = getPeriodData(label);
           return (
             <section key={label} className="p-6 border border-zinc-100 rounded-2xl print-page">
+              <PrintHeader playerName={profile.name} grade={selectedGrade} period={label} />
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-black text-zinc-900">
                   <span className="text-sm font-bold text-zinc-400 block mb-1">{selectedGrade}</span>
@@ -1046,7 +1077,7 @@ const GoalForm = ({
   );
 };
 
-const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (stats: MatchStats[]) => void }) => {
+const MatchStatsSection = ({ stats, onSave, profile }: { stats: MatchStats[], onSave: (stats: MatchStats[]) => void, profile?: PlayerProfile }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'monthly' | 'period'>('list');
@@ -1208,6 +1239,7 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
 
   return (
     <div className="space-y-6" id="match-stats">
+      {profile && <PrintHeader playerName={profile.name} grade={profile.grade} />}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
           <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1480,7 +1512,7 @@ const MatchStatsSection = ({ stats, onSave }: { stats: MatchStats[], onSave: (st
   );
 };
 
-const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (tests: TestResults[]) => void }) => {
+const TestResultsSection = ({ tests, onSave, profile }: { tests: TestResults[], onSave: (tests: TestResults[]) => void, profile?: PlayerProfile }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -1545,6 +1577,7 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
 
   return (
     <div className="space-y-6" id="test-results">
+      {profile && <PrintHeader playerName={profile.name} grade={profile.grade} />}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1884,6 +1917,7 @@ const EvaluationForm = ({
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto" id="evaluation-sheet">
+      <PrintHeader playerName={data.profile?.name || ''} grade={selectedGrade} period={selectedPeriod} />
       <div className="flex flex-col gap-4">
         {/* Grade Selector */}
         <div className="flex gap-2 overflow-x-auto pb-2">
@@ -2353,6 +2387,7 @@ const ReportView = ({
 
       <div className="bg-white p-12 rounded-3xl shadow-xl border border-zinc-100 print:shadow-none print:border-none print:p-0" id="report-view">
         <div className="print-page">
+          <PrintHeader playerName={player.name} grade={selectedGrade} period={selectedPeriod} />
           {/* Header */}
           <div className="flex justify-between items-start border-b-2 border-zinc-900 pb-8 mb-8">
             <div>
@@ -2457,6 +2492,7 @@ const ReportView = ({
         </div>
 
         <div className="print-page">
+          <PrintHeader playerName={player.name} grade={selectedGrade} period={selectedPeriod} />
           {/* Latest Test Results */}
           {latestTest && (
             <div className="mb-12">
@@ -2680,6 +2716,7 @@ const ReportView = ({
               
               return (
                 <div key={cat} className={cn("bg-zinc-50 rounded-3xl overflow-hidden border border-zinc-100 shadow-sm", isMajorCategory && "print-page")}>
+                  {isMajorCategory && <PrintHeader playerName={player.name} grade={selectedGrade} period={selectedPeriod} />}
                   <div className="bg-zinc-900 p-6 flex justify-between items-center text-white">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center font-black text-lg">
@@ -3155,8 +3192,8 @@ export default function App() {
                     onSave={handleUpdateEvals} 
                   />
                 )}
-                {activeTab === 'match-stats' && currentData && <MatchStatsSection stats={currentData.matchStats || []} onSave={handleUpdateStats} />}
-                {activeTab === 'test-results' && currentData && <TestResultsSection tests={currentData.testResults || []} onSave={handleUpdateTests} />}
+                {activeTab === 'match-stats' && currentData && <MatchStatsSection stats={currentData.matchStats || []} onSave={handleUpdateStats} profile={currentData.profile || DEFAULT_PROFILE} />}
+                {activeTab === 'test-results' && currentData && <TestResultsSection tests={currentData.testResults || []} onSave={handleUpdateTests} profile={currentData.profile || DEFAULT_PROFILE} />}
                 {activeTab === 'report' && currentData && (
                   <ErrorBoundary>
                     <ReportView 
