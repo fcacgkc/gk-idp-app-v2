@@ -66,6 +66,7 @@ export interface TestResults {
     short: number[][][]; // [row][col][saves, shots]
     long: number[][][]; // [row][col][saves, shots]
   };
+  comment?: string;
 }
 
 export interface PlayerProfile {
@@ -85,4 +86,5 @@ export interface PlayerData {
   evaluations: Evaluation[];
   matchStats: MatchStats[];
   testResults: TestResults[];
+  matchStatsComments?: Record<string, string>;
 }

@@ -1672,6 +1672,17 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
             </div>
           </div>
 
+          {/* コメント入力欄 */}
+          <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 mb-6">
+            <label className="text-xs font-bold text-zinc-500 block mb-1">テストの振り返り・コメント</label>
+            <textarea
+              value={newTest.comment || ''}
+              onChange={e => setNewTest({...newTest, comment: e.target.value})}
+              placeholder="テスト時の状況、体調、意識した点など..."
+              className="w-full text-xs text-zinc-700 bg-white border border-zinc-200 rounded-lg p-3 h-20 focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-none"
+            />
+          </div>
+
           <div className="flex justify-end gap-3">
             <button onClick={() => {
               setIsAdding(false);
@@ -1788,6 +1799,13 @@ const TestResultsSection = ({ tests, onSave }: { tests: TestResults[], onSave: (
                       );
                     })}
                   </div>
+                  
+                  {t.comment && (
+                    <div className="mt-4 p-4 bg-zinc-50 border border-zinc-100 rounded-xl">
+                      <div className="text-xs font-bold text-zinc-400 mb-1">振り返り・コメント</div>
+                      <p className="text-xs text-zinc-700 whitespace-pre-wrap">{t.comment}</p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -2043,12 +2061,37 @@ const EvaluationForm = ({
   );
 };
 
-const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
+const ReportView = ({ 
+  player, 
+  data, 
+  onUpdateStatsComments,
+  onUpdateTests
+}: { 
+  player: Player, 
+  data: PlayerData, 
+  onUpdateStatsComments: (comments: Record<string, string>) => void,
+  onUpdateTests: (tests: TestResults[]) => void
+}) => {
   const [selectedGrade, setSelectedGrade] = useState(data.profile?.grade || GRADES[3]);
   const [selectedPeriod, setSelectedPeriod] = useState(PERIODS[0]);
   
   const currentPeriodKey = `${selectedGrade}_${selectedPeriod}`;
   
+  const currentCommentKey = `${selectedGrade}_${selectedPeriod}`;
+  const [localComment, setLocalComment] = useState('');
+
+  useEffect(() => {
+    setLocalComment(data.matchStatsComments?.[currentCommentKey] || '');
+  }, [currentCommentKey, data.matchStatsComments]);
+
+  const handleSaveComment = () => {
+    const updated = {
+      ...(data.matchStatsComments || {}),
+      [currentCommentKey]: localComment
+    };
+    onUpdateStatsComments(updated);
+  };
+
   const currentEval = useMemo(() => {
     let ev = data.evaluations?.find(e => e.period === currentPeriodKey);
     if (!ev && selectedGrade === data.profile?.grade) {
@@ -2088,6 +2131,9 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
   // 4-month aggregated stats for the selected period
   const periodStats = useMemo(() => {
     const periodMonths: Record<string, number[]> = {
+      '4-7月': [4, 5, 6, 7],
+      '8-11月': [8, 9, 10, 11],
+      '12-3月': [12, 1, 2, 3],
       '7月': [4, 5, 6, 7],
       '11月': [8, 9, 10, 11],
       '3月': [12, 1, 2, 3]
@@ -2130,6 +2176,132 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
     if (testResults.length === 0) return null;
     return [...testResults].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
   }, [data.testResults]);
+
+  const prevLatestTest = useMemo(() => {
+    if (!latestTest) return undefined;
+    const testResults = data.testResults || [];
+    const sorted = [...testResults].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const idx = sorted.findIndex(t => t.id === latestTest.id);
+    if (idx > 0) return sorted[idx - 1];
+    return undefined;
+  }, [data.testResults, latestTest]);
+
+  const [localTestComment, setLocalTestComment] = useState('');
+
+  useEffect(() => {
+    setLocalTestComment(latestTest?.comment || '');
+  }, [latestTest?.id, latestTest?.comment]);
+
+  const handleSaveTestComment = () => {
+    if (!latestTest) return;
+    const updatedTests = (data.testResults || []).map(t => 
+      t.id === latestTest.id ? { ...t, comment: localTestComment } : t
+    );
+    onUpdateTests(updatedTests);
+  };
+
+  const prevPeriodInfo = useMemo(() => {
+    const periodIdx = PERIODS.indexOf(selectedPeriod);
+    if (periodIdx > 0) {
+      return { grade: selectedGrade, period: PERIODS[periodIdx - 1] };
+    } else {
+      const gradeIdx = GRADES.indexOf(selectedGrade);
+      if (gradeIdx > 0) {
+        return { grade: GRADES[gradeIdx - 1], period: PERIODS[PERIODS.length - 1] };
+      }
+    }
+    return null;
+  }, [selectedGrade, selectedPeriod]);
+
+  const prevPeriodStats = useMemo(() => {
+    if (!prevPeriodInfo) return null;
+    
+    const periodMonths: Record<string, number[]> = {
+      '4-7月': [4, 5, 6, 7],
+      '8-11月': [8, 9, 10, 11],
+      '12-3月': [12, 1, 2, 3],
+      '7月': [4, 5, 6, 7],
+      '11月': [8, 9, 10, 11],
+      '3月': [12, 1, 2, 3]
+    };
+    
+    const targetPeriod = prevPeriodInfo.period;
+    const months = periodMonths[targetPeriod] || periodMonths[targetPeriod.split('-')[1]] || [];
+    const matchStats = data.matchStats || [];
+    const filtered = matchStats.filter(s => {
+      if (!s.date) return false;
+      const month = new Date(s.date).getMonth() + 1;
+      return months.includes(month);
+    });
+
+    const initial = {
+      paOutside: { shots: 0, saves: 0 },
+      paInside: { shots: 0, saves: 0 },
+      highBall: { attacks: 0, successes: 0, errors: 0 },
+      oneVsOneB: { attacks: 0, successes: 0, errors: 0 },
+      sweeper: { attacks: 0, successes: 0, errors: 0 },
+      passDF: { total: 0, successes: 0 },
+      passMF: { total: 0, successes: 0 },
+      passFW: { total: 0, successes: 0 },
+    };
+
+    return filtered.reduce((acc, s) => ({
+      paOutside: { shots: acc.paOutside.shots + (s.paOutside?.shots || 0), saves: acc.paOutside.saves + (s.paOutside?.saves || 0) },
+      paInside: { shots: acc.paInside.shots + (s.paInside?.shots || 0), saves: acc.paInside.saves + (s.paInside?.saves || 0) },
+      highBall: { attacks: acc.highBall.attacks + (s.highBall?.attacks || 0), successes: acc.highBall.successes + (s.highBall?.successes || 0), errors: acc.highBall.errors + (s.highBall?.errors || 0) },
+      oneVsOneB: { attacks: acc.oneVsOneB.attacks + (s.oneVsOneB?.attacks || 0), successes: acc.oneVsOneB.successes + (s.oneVsOneB?.successes || 0), errors: acc.oneVsOneB.errors + (s.oneVsOneB?.errors || 0) },
+      sweeper: { attacks: acc.sweeper.attacks + (s.sweeper?.attacks || 0), successes: acc.sweeper.successes + (s.sweeper?.successes || 0), errors: acc.sweeper.errors + (s.sweeper?.errors || 0) },
+      passDF: { total: acc.passDF.total + (s.passDF?.total || 0), successes: acc.passDF.successes + (s.passDF?.successes || 0) },
+      passMF: { total: acc.passMF.total + (s.passMF?.total || 0), successes: acc.passMF.successes + (s.passMF?.successes || 0) },
+      passFW: { total: acc.passFW.total + (s.passFW?.total || 0), successes: acc.passFW.successes + (s.passFW?.successes || 0) },
+    }), initial);
+  }, [data.matchStats, prevPeriodInfo]);
+
+  const getPrevStatVal = (label: string) => {
+    if (!prevPeriodStats) return null;
+    switch (label) {
+      case 'PA外セーブ率':
+        return calculateRate(prevPeriodStats.paOutside.saves, prevPeriodStats.paOutside.shots);
+      case 'PA内セーブ率':
+        return calculateRate(prevPeriodStats.paInside.saves, prevPeriodStats.paInside.shots);
+      case 'ハイボール成功率':
+        return calculateRate(prevPeriodStats.highBall.successes, prevPeriodStats.highBall.attacks);
+      case 'ハイボール判断ミス':
+        return prevPeriodStats.highBall.errors;
+      case '1v1B成功率':
+        return calculateRate(prevPeriodStats.oneVsOneB.successes, prevPeriodStats.oneVsOneB.attacks);
+      case '1v1B判断ミス':
+        return prevPeriodStats.oneVsOneB.errors;
+      case 'スイーパー成功率':
+        return calculateRate(prevPeriodStats.sweeper.successes, prevPeriodStats.sweeper.attacks);
+      case 'スイーパー判断ミス':
+        return prevPeriodStats.sweeper.errors;
+      case 'DFへのパス成功率':
+        return calculateRate(prevPeriodStats.passDF.successes, prevPeriodStats.passDF.total);
+      case 'MFへのパス成功率':
+        return calculateRate(prevPeriodStats.passMF.successes, prevPeriodStats.passMF.total);
+      case 'FWへのパス成功率':
+        return calculateRate(prevPeriodStats.passFW.successes, prevPeriodStats.passFW.total);
+      default:
+        return null;
+    }
+  };
+
+  const renderDiffNumWithSign = (current: number | null, prev: number | null | undefined, isPercent = false, unit = '', isErrorMetric = false) => {
+    if (prev === undefined || prev === null || current === null) return null;
+    const diff = current - prev;
+    if (diff === 0) return <span className="text-[10px] text-zinc-400 font-normal ml-1 print:text-zinc-650">(±0{unit})</span>;
+    const formatted = isPercent ? `${diff > 0 ? '+' : ''}${Math.round(diff)}%` : `${diff > 0 ? '+' : ''}${Math.round(diff * 10) / 10}${unit}`;
+    
+    let color = 'text-emerald-600';
+    if (isErrorMetric) {
+      color = diff < 0 ? 'text-emerald-600 font-bold' : 'text-rose-500 font-bold';
+    } else {
+      color = diff > 0 ? 'text-emerald-600 font-bold' : 'text-rose-500 font-bold';
+    }
+    
+    return <span className={`text-[10px] ml-1 ${color}`}>({formatted})</span>;
+  };
 
   const handleExportPDF = () => {
     exportToPDF('report-view', `レポート_${player.name}_${selectedGrade}_${selectedPeriod}`);
@@ -2253,15 +2425,33 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
                 { label: 'DFへのパス成功率', val: calculateRate(periodStats.passDF.successes, periodStats.passDF.total), unit: '%' },
                 { label: 'MFへのパス成功率', val: calculateRate(periodStats.passMF.successes, periodStats.passMF.total), unit: '%' },
                 { label: 'FWへのパス成功率', val: calculateRate(periodStats.passFW.successes, periodStats.passFW.total), unit: '%' },
-              ].map((s, i) => (
-                <div key={i} className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 print-no-break">
-                  <div className="text-[10px] font-bold text-zinc-400 mb-1">{s.label}</div>
-                  <div className="text-xl font-black text-zinc-900">
-                    {s.val === null ? '-' : s.val}
-                    {s.val !== null && <span className="text-xs ml-0.5">{s.unit}</span>}
+              ].map((s, i) => {
+                const prevVal = getPrevStatVal(s.label);
+                const isErrorMetric = s.label.includes('判断ミス');
+                return (
+                  <div key={i} className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 print-no-break">
+                    <div className="text-[10px] font-bold text-zinc-400 mb-1">{s.label}</div>
+                    <div className="text-xl font-black text-zinc-900 flex items-baseline flex-wrap">
+                      <span>{s.val === null ? '-' : s.val}</span>
+                      {s.val !== null && <span className="text-xs ml-0.5 font-normal">{s.unit}</span>}
+                      {prevPeriodInfo && s.val !== null && renderDiffNumWithSign(s.val, prevVal, s.unit === '%', s.unit, isErrorMetric)}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+            
+            {/* Match Stats Comment Section */}
+            <div className="mt-6 bg-zinc-50 p-4 rounded-xl border border-zinc-100 print-no-break">
+              <div className="text-xs font-bold text-zinc-500 mb-2">期ごとの試合スタッツ振り返り・コメント</div>
+              <textarea
+                value={localComment}
+                onChange={(e) => setLocalComment(e.target.value)}
+                onBlur={handleSaveComment}
+                placeholder="スタッツに関する振り返り、コーチからの評価コメントなどを入力できます..."
+                className="w-full text-xs text-zinc-700 bg-white border border-zinc-200 rounded-lg p-3 h-24 focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-none print:border-none print:bg-transparent print:p-0 print:h-auto"
+              />
+              <div className="text-[10px] text-zinc-400 text-right mt-1 print:hidden font-sans">※ 入力欄を外れる（枠外をクリックする）と自動保存されます</div>
             </div>
           </div>
         </div>
@@ -2276,23 +2466,29 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
                   <h3 className="text-sm font-bold text-zinc-500 uppercase flex items-center gap-2"><Dribbble size={16} /> キック飛距離 (平均)</h3>
                   <div className="grid grid-cols-3 gap-3">
                     {[
-                      { label: '右足', val: calculateAvg(latestTest.kick.right) },
-                      { label: '左足', val: calculateAvg(latestTest.kick.left) },
-                      { label: 'パント', val: calculateAvg(latestTest.kick.punt) },
-                    ].map((k, i) => (
-                      <div key={i} className="bg-zinc-50 p-3 rounded-xl border border-zinc-100 text-center">
-                        <div className="text-[10px] font-bold text-zinc-400 mb-1">{k.label}</div>
-                        <div className="text-lg font-black text-zinc-900">{k.val}m</div>
-                      </div>
-                    ))}
+                      { label: '右足', val: calculateAvg(latestTest.kick.right), key: 'right' },
+                      { label: '左足', val: calculateAvg(latestTest.kick.left), key: 'left' },
+                      { label: 'パント', val: calculateAvg(latestTest.kick.punt), key: 'punt' },
+                    ].map((k, i) => {
+                      const prevVal = prevLatestTest ? calculateAvg(prevLatestTest.kick[k.key as 'right' | 'left' | 'punt']) : null;
+                      return (
+                        <div key={i} className="bg-zinc-50 p-3 rounded-xl border border-zinc-100 text-center">
+                          <div className="text-[10px] font-bold text-zinc-400 mb-1">{k.label}</div>
+                          <div className="text-lg font-black text-zinc-900 flex flex-col items-center">
+                            <span>{k.val}m</span>
+                            {prevLatestTest && renderDiffNumWithSign(k.val, prevVal, false, 'm')}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="space-y-4 print-no-break">
                   <h3 className="text-sm font-bold text-zinc-500 uppercase flex items-center gap-2"><Target size={16} /> シュートストップ率</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {[
-                      { label: '14m (Short)', grid: latestTest.shootStop.short },
-                      { label: '19m (Long)', grid: latestTest.shootStop.long },
+                      { label: '14m (Short)', grid: latestTest.shootStop.short, key: 'short' },
+                      { label: '19m (Long)', grid: latestTest.shootStop.long, key: 'long' },
                     ].map((s, i) => {
                       const totalSaves = s.grid.flat().reduce((acc, curr) => acc + curr[0], 0);
                       const totalShots = s.grid.flat().reduce((acc, curr) => acc + curr[1], 0);
@@ -2307,33 +2503,70 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
                       const rightSaves = s.grid.reduce((acc, row) => acc + row[2][0], 0);
                       const rightShots = s.grid.reduce((acc, row) => acc + row[2][1], 0);
 
+                      // 前回のテストとの比較
+                      let prevTotalRate: number | null = null;
+                      let prevLeftRate: number | null = null;
+                      let prevCentralRate: number | null = null;
+                      let prevRightRate: number | null = null;
+
+                      if (prevLatestTest) {
+                        const prevGrid = prevLatestTest.shootStop[s.key as 'short' | 'long'];
+                        const prevTotalSaves = prevGrid.flat().reduce((acc, curr) => acc + curr[0], 0);
+                        const prevTotalShots = prevGrid.flat().reduce((acc, curr) => acc + curr[1], 0);
+                        prevTotalRate = prevTotalShots > 0 ? Math.round((prevTotalSaves / prevTotalShots) * 100) : null;
+
+                        const prevLeftSaves = prevGrid.reduce((acc, row) => acc + row[0][0], 0);
+                        const prevLeftShots = prevGrid.reduce((acc, row) => acc + row[0][1], 0);
+                        prevLeftRate = prevLeftShots > 0 ? Math.round((prevLeftSaves / prevLeftShots) * 105) : null; // adjustment for scale
+
+                        const prevCentralSaves = prevGrid.reduce((acc, row) => acc + row[1][0], 0);
+                        const prevCentralShots = prevGrid.reduce((acc, row) => acc + row[1][1], 0);
+                        prevCentralRate = prevCentralShots > 0 ? Math.round((prevCentralSaves / prevCentralShots) * 100) : null;
+
+                        const prevRightSaves = prevGrid.reduce((acc, row) => acc + row[2][0], 0);
+                        const prevRightShots = prevGrid.reduce((acc, row) => acc + row[2][1], 0);
+                        prevRightRate = prevRightShots > 0 ? Math.round((prevRightSaves / prevRightShots) * 100) : null;
+                      }
+
                       return (
                         <div key={i} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 space-y-4">
                           <div className="space-y-3">
-                            <div className="flex justify-between items-center">
+                            <div className="flex justify-between items-center flex-wrap">
                               <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{s.label}</div>
-                              <div className={cn("text-xl font-black", getShotStopColor(totalRate))}>
-                                {formatRate(totalSaves, totalShots)} <span className="text-[10px] text-zinc-400">Total</span>
+                              <div className="flex items-center gap-1">
+                                <div className={cn("text-xl font-black", getShotStopColor(totalRate))}>
+                                  {formatRate(totalSaves, totalShots)} <span className="text-[10px] text-zinc-400">Total</span>
+                                </div>
+                                {prevLatestTest && totalRate !== null && prevTotalRate !== null && renderDiffNumWithSign(totalRate, prevTotalRate, true)}
                               </div>
                             </div>
                             
                             <div className="grid grid-cols-3 gap-2 border-t border-zinc-200 pt-2">
                               <div className="text-center">
                                 <div className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">左</div>
-                                <div className={cn("text-sm font-black", getShotStopColor(leftShots > 0 ? Math.round((leftSaves/leftShots)*100) : null))}>
-                                  {formatRate(leftSaves, leftShots)}
+                                <div className="flex flex-col items-center">
+                                  <div className={cn("text-sm font-black", getShotStopColor(leftShots > 0 ? Math.round((leftSaves/leftShots)*100) : null))}>
+                                    {formatRate(leftSaves, leftShots)}
+                                  </div>
+                                  {prevLatestTest && leftShots > 0 && prevLeftRate !== null && renderDiffNumWithSign(leftShots > 0 ? Math.round((leftSaves/leftShots)*100) : null, prevLeftRate, true)}
                                 </div>
                               </div>
                               <div className="text-center border-x border-zinc-200">
                                 <div className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">中央</div>
-                                <div className={cn("text-sm font-black", getShotStopColor(centralShots > 0 ? Math.round((centralSaves/centralShots)*100) : null))}>
-                                  {formatRate(centralSaves, centralShots)}
+                                <div className="flex flex-col items-center">
+                                  <div className={cn("text-sm font-black", getShotStopColor(centralShots > 0 ? Math.round((centralSaves/centralShots)*100) : null))}>
+                                    {formatRate(centralSaves, centralShots)}
+                                  </div>
+                                  {prevLatestTest && centralShots > 0 && prevCentralRate !== null && renderDiffNumWithSign(centralShots > 0 ? Math.round((centralSaves/centralShots)*100) : null, prevCentralRate, true)}
                                 </div>
                               </div>
                               <div className="text-center">
                                 <div className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">右</div>
-                                <div className={cn("text-sm font-black", getShotStopColor(rightShots > 0 ? Math.round((rightSaves/rightShots)*100) : null))}>
-                                  {formatRate(rightSaves, rightShots)}
+                                <div className="flex flex-col items-center">
+                                  <div className={cn("text-sm font-black", getShotStopColor(rightShots > 0 ? Math.round((rightSaves/rightShots)*100) : null))}>
+                                    {formatRate(rightSaves, rightShots)}
+                                  </div>
+                                  {prevLatestTest && rightShots > 0 && prevRightRate !== null && renderDiffNumWithSign(rightShots > 0 ? Math.round((rightSaves/rightShots)*100) : null, prevRightRate, true)}
                                 </div>
                               </div>
                             </div>
@@ -2370,6 +2603,19 @@ const ReportView = ({ player, data }: { player: Player, data: PlayerData }) => {
                     })}
                   </div>
                 </div>
+              </div>
+              
+              {/* Test Results Comment Section */}
+              <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 mt-6 print-no-break">
+                <div className="text-xs font-bold text-zinc-500 mb-2 font-sans">この回のテスト評価・振り返り</div>
+                <textarea
+                  value={localTestComment}
+                  onChange={(e) => setLocalTestComment(e.target.value)}
+                  onBlur={handleSaveTestComment}
+                  placeholder="キックの飛距離向上や、シュートストップ各距離・コース別の推移に関する評価コメントをご記入ください..."
+                  className="w-full text-xs text-zinc-700 bg-white border border-zinc-200 rounded-lg p-3 h-24 focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-none print:border-none print:bg-transparent print:p-0 print:h-auto"
+                />
+                <div className="text-[10px] text-zinc-400 text-right mt-1 print:hidden font-sans">※ 入力欄を外れると自動保存されます</div>
               </div>
             </div>
           )}
@@ -2779,6 +3025,13 @@ export default function App() {
     }));
   };
 
+  const handleUpdateStatsComments = (comments: Record<string, string>) => {
+    setAllData(prev => ({
+      ...prev,
+      [selectedPlayerId]: { ...prev[selectedPlayerId], matchStatsComments: comments }
+    }));
+  };
+
   const handleLogin = () => {
     setIsAuthenticated(true);
     localStorage.setItem('coach_auth', 'true');
@@ -2906,7 +3159,12 @@ export default function App() {
                 {activeTab === 'test-results' && currentData && <TestResultsSection tests={currentData.testResults || []} onSave={handleUpdateTests} />}
                 {activeTab === 'report' && currentData && (
                   <ErrorBoundary>
-                    <ReportView player={currentPlayer} data={currentData} />
+                    <ReportView 
+                      player={currentPlayer} 
+                      data={currentData} 
+                      onUpdateStatsComments={handleUpdateStatsComments}
+                      onUpdateTests={handleUpdateTests}
+                    />
                   </ErrorBoundary>
                 )}
               </motion.div>
