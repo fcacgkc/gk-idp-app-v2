@@ -24,7 +24,8 @@ import {
   EyeOff,
   Database,
   Upload,
-  Save
+  Save,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -105,6 +106,19 @@ const getCriteriaText = (item: string, score: number) => {
   if (!criteria) return null;
   const rank = getRankLabel(score);
   return criteria[rank as keyof typeof criteria];
+};
+
+const getPreviousPeriod = (grade: string, period: string) => {
+  const periodIdx = PERIODS.indexOf(period);
+  if (periodIdx > 0) {
+    return { grade, period: PERIODS[periodIdx - 1] };
+  } else {
+    const gradeIdx = GRADES.indexOf(grade);
+    if (gradeIdx > 0) {
+      return { grade: GRADES[gradeIdx - 1], period: PERIODS[PERIODS.length - 1] };
+    }
+  }
+  return null;
 };
 
 // --- Mock Data ---
@@ -1887,19 +1901,59 @@ const EvaluationForm = ({
 
   const currentEval = getEvalForPeriod(selectedGrade, selectedPeriod);
 
-  const [scores, setScores] = useState<Record<string, number>>(currentEval.scores);
+  // 直前の期（例: 高校2年 4-7月なら高校1年 12-3月）
+  const prevPeriodInfo = useMemo(() => getPreviousPeriod(selectedGrade, selectedPeriod), [selectedGrade, selectedPeriod]);
+  
+  const prevEval = useMemo(() => {
+    if (!prevPeriodInfo) return null;
+    return getEvalForPeriod(prevPeriodInfo.grade, prevPeriodInfo.period);
+  }, [prevPeriodInfo, data.evaluations, data.profile]);
+
+  const hasPrevScores = useMemo(() => {
+    return Boolean(prevEval && prevEval.scores && Object.keys(prevEval.scores).length > 0);
+  }, [prevEval]);
+
+  const [scores, setScores] = useState<Record<string, number>>(() => {
+    const hasCurrentScores = currentEval && currentEval.scores && Object.keys(currentEval.scores).length > 0;
+    if (hasCurrentScores) {
+      return currentEval.scores;
+    }
+    if (prevEval && prevEval.scores && Object.keys(prevEval.scores).length > 0) {
+      return { ...prevEval.scores };
+    }
+    return currentEval.scores || {};
+  });
   const [categoryFeedback, setCategoryFeedback] = useState<Record<Category, string>>(currentEval.categoryFeedback || {} as Record<Category, string>);
   const [categoryVideoUrls, setCategoryVideoUrls] = useState<Record<Category, string>>(currentEval.categoryVideoUrls || {} as Record<Category, string>);
 
   useEffect(() => {
     const ev = getEvalForPeriod(selectedGrade, selectedPeriod);
-    setScores(ev.scores);
+    const hasCurrentScores = ev && ev.scores && Object.keys(ev.scores).length > 0;
+    
+    if (hasCurrentScores) {
+      setScores(ev.scores);
+    } else {
+      // 直前の期のスコアがあれば初期値として自動設定
+      const prevP = getPreviousPeriod(selectedGrade, selectedPeriod);
+      const pEv = prevP ? getEvalForPeriod(prevP.grade, prevP.period) : null;
+      if (pEv && pEv.scores && Object.keys(pEv.scores).length > 0) {
+        setScores({ ...pEv.scores });
+      } else {
+        setScores({});
+      }
+    }
     setCategoryFeedback(ev.categoryFeedback || {} as Record<Category, string>);
     setCategoryVideoUrls(ev.categoryVideoUrls || {} as Record<Category, string>);
   }, [selectedGrade, selectedPeriod, data.evaluations]);
 
   const handleScoreChange = (item: string, val: number) => {
     setScores(prev => ({ ...prev, [item]: val }));
+  };
+
+  const handleApplyPrevScores = () => {
+    if (prevEval && prevEval.scores && Object.keys(prevEval.scores).length > 0) {
+      setScores({ ...prevEval.scores });
+    }
   };
 
   const handleSave = () => {
@@ -1965,6 +2019,34 @@ const EvaluationForm = ({
             </button>
           </div>
         </div>
+
+        {/* Previous Period Information Banner */}
+        {prevPeriodInfo && (
+          <div className="bg-emerald-50/70 border border-emerald-200/70 rounded-2xl p-3 px-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-emerald-950 print:hidden">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 bg-emerald-600 text-white rounded-md font-bold text-[10px] tracking-wider">前回の期</span>
+              <span className="font-extrabold text-zinc-900">
+                {prevPeriodInfo.grade} {prevPeriodInfo.period}
+              </span>
+              <span className="text-zinc-600 font-medium">
+                {hasPrevScores 
+                  ? `の評価データを初期値・前回の評価として表示中` 
+                  : `の評価データは未登録です`}
+              </span>
+            </div>
+            {hasPrevScores && (
+              <button
+                type="button"
+                onClick={handleApplyPrevScores}
+                className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap"
+                title="前回の評価スコアを現在の入力に再反映します"
+              >
+                <RotateCcw size={12} />
+                <span>前回の評価スコアを再反映</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -1998,14 +2080,32 @@ const EvaluationForm = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
               {EVAL_ITEMS[selectedCategory].map(item => {
-                const score = scores[item] || 5;
+                const currentVal = scores[item];
+                const prevVal = prevEval?.scores?.[item];
+                const score = currentVal !== undefined ? currentVal : (prevVal !== undefined ? prevVal : 5);
                 const criteriaText = getCriteriaText(item, score);
+                const hasPrev = prevVal !== undefined && prevVal > 0;
+                const diff = hasPrev ? score - prevVal : null;
                 
                 return (
-                  <div key={item} className="space-y-3 p-4 rounded-xl border border-zinc-50 hover:bg-zinc-50 transition-all group">
+                  <div key={item} className="space-y-3 p-4 rounded-xl border border-zinc-100 bg-white hover:border-zinc-300 transition-all group">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-bold text-zinc-800">{item}</span>
                       <div className="flex items-center gap-2">
+                        {hasPrev && (
+                          <div className="flex items-center gap-1 bg-zinc-100 px-2 py-0.5 rounded-md text-[10px] font-bold text-zinc-600" title={`前回のスコア: ${prevVal}`}>
+                            <span className="text-zinc-400">前回:</span>
+                            <span className="font-black text-zinc-800">{prevVal}</span>
+                            <span className={cn(
+                              "ml-0.5 px-1 py-0.2 rounded text-[9px] font-black",
+                              diff! > 0 ? "bg-emerald-100 text-emerald-700" :
+                              diff! < 0 ? "bg-rose-100 text-rose-700" :
+                              "bg-zinc-200 text-zinc-600"
+                            )}>
+                              {diff! > 0 ? `+${diff}` : diff! < 0 ? `${diff}` : '±0'}
+                            </span>
+                          </div>
+                        )}
                         <span className={cn(
                           "text-[10px] font-black px-2 py-0.5 rounded-md",
                           score >= 9 ? "bg-emerald-600 text-white" : 
@@ -2020,15 +2120,26 @@ const EvaluationForm = ({
                       </div>
                     </div>
                     
-                    <input 
-                      type="range" 
-                      min="1" 
-                      max="10" 
-                      step="1"
-                      value={score}
-                      onChange={e => handleScoreChange(item, parseInt(e.target.value))}
-                      className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-                    />
+                    <div className="space-y-1">
+                      <input 
+                        type="range" 
+                        min="1" 
+                        max="10" 
+                        step="1"
+                        value={score}
+                        onChange={e => handleScoreChange(item, parseInt(e.target.value))}
+                        className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                      />
+                      <div className="flex justify-between items-center text-[10px] text-zinc-400 px-0.5">
+                        <span>1 (C)</span>
+                        {hasPrev && (
+                          <span className="text-emerald-700 font-bold">
+                            前回: {prevVal}点 {diff !== 0 && `(現在: ${diff! > 0 ? `+${diff}` : diff})`}
+                          </span>
+                        )}
+                        <span>10 (S)</span>
+                      </div>
+                    </div>
 
                     <AnimatePresence mode="wait">
                       <motion.div 
@@ -2246,6 +2357,16 @@ const ReportView = ({
     }
     return null;
   }, [selectedGrade, selectedPeriod]);
+
+  const prevEval = useMemo(() => {
+    if (!prevPeriodInfo) return null;
+    const key = `${prevPeriodInfo.grade}_${prevPeriodInfo.period}`;
+    let ev = data.evaluations?.find(e => e.period === key);
+    if (!ev && prevPeriodInfo.grade === data.profile?.grade) {
+      ev = data.evaluations?.find(e => e.period === prevPeriodInfo.period);
+    }
+    return ev;
+  }, [prevPeriodInfo, data.evaluations, data.profile]);
 
   const prevPeriodStats = useMemo(() => {
     if (!prevPeriodInfo) return null;
@@ -2708,6 +2829,11 @@ const ReportView = ({
               const scores = items.map(item => currentEval?.scores?.[item] || 0) as number[];
               const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
               const percentage = (avg / 10) * 100;
+
+              const prevScores = items.map(item => prevEval?.scores?.[item] || 0) as number[];
+              const prevAvg = prevScores.some(s => s > 0) ? prevScores.reduce((a, b) => a + b, 0) / prevScores.length : null;
+              const avgDiff = (avg > 0 && prevAvg !== null && prevAvg > 0) ? Math.round((avg - prevAvg) * 10) / 10 : null;
+
               const feedback = currentEval?.categoryFeedback?.[cat] || (cat === 'Technical' ? currentEval?.feedback : '');
               const videoUrl = currentEval?.categoryVideoUrls?.[cat] || (cat === 'Technical' ? currentEval?.videoUrl : '');
               
@@ -2723,7 +2849,19 @@ const ReportView = ({
                         {avg.toFixed(1)}
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold">{CATEGORY_LABELS[cat]}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-bold">{CATEGORY_LABELS[cat]}</h3>
+                          {avgDiff !== null && (
+                            <span className={cn(
+                              "text-[10px] font-black px-1.5 py-0.5 rounded",
+                              avgDiff > 0 ? "bg-emerald-800 text-emerald-300" :
+                              avgDiff < 0 ? "bg-rose-900 text-rose-300" :
+                              "bg-zinc-800 text-zinc-400"
+                            )}>
+                              {avgDiff > 0 ? `+${avgDiff}` : avgDiff < 0 ? `${avgDiff}` : '±0'}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Category Score</div>
                       </div>
                     </div>
@@ -2744,10 +2882,30 @@ const ReportView = ({
                       <div className="grid grid-cols-1 gap-3">
                         {items.map(item => {
                           const score = currentEval?.scores?.[item] || 0;
+                          const prevScore = prevEval?.scores?.[item];
+                          const hasPrev = prevScore !== undefined && prevScore > 0;
+                          const diff = (hasPrev && score > 0) ? score - prevScore : null;
+
                           return (
                             <div key={item} className="flex justify-between items-center bg-white p-3 rounded-xl border border-zinc-100 print-no-break">
                               <span className="text-sm font-bold text-zinc-700">{item}</span>
                               <div className="flex items-center gap-2">
+                                {hasPrev && (
+                                  <div className="flex items-center gap-1 bg-zinc-50 px-2 py-0.5 rounded-md text-[10px] font-bold text-zinc-500 border border-zinc-100">
+                                    <span className="text-zinc-400">前回:</span>
+                                    <span className="font-black text-zinc-700">{prevScore}</span>
+                                    {diff !== null && (
+                                      <span className={cn(
+                                        "ml-0.5 px-1 py-0.2 rounded text-[9px] font-black",
+                                        diff > 0 ? "bg-emerald-100 text-emerald-700" :
+                                        diff < 0 ? "bg-rose-100 text-rose-700" :
+                                        "bg-zinc-200 text-zinc-600"
+                                      )}>
+                                        {diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : '±0'}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                                 <div className={cn(
                                   "text-[10px] font-black px-2 py-0.5 rounded-md",
                                   score >= 9 ? "bg-emerald-600 text-white" : 
