@@ -2274,6 +2274,24 @@ const ReportView = ({
   };
 
   // 4-month aggregated stats for the selected period
+  const periodMatchCount = useMemo(() => {
+    const periodMonths: Record<string, number[]> = {
+      '4-7月': [4, 5, 6, 7],
+      '8-11月': [8, 9, 10, 11],
+      '12-3月': [12, 1, 2, 3],
+      '7月': [4, 5, 6, 7],
+      '11月': [8, 9, 10, 11],
+      '3月': [12, 1, 2, 3]
+    };
+    const months = periodMonths[selectedPeriod] || [];
+    const matchStats = data.matchStats || [];
+    return matchStats.filter(s => {
+      if (!s.date) return false;
+      const month = new Date(s.date).getMonth() + 1;
+      return months.includes(month);
+    }).length;
+  }, [data.matchStats, selectedPeriod]);
+
   const periodStats = useMemo(() => {
     const periodMonths: Record<string, number[]> = {
       '4-7月': [4, 5, 6, 7],
@@ -2327,6 +2345,26 @@ const ReportView = ({
     }
     return null;
   }, [selectedGrade, selectedPeriod]);
+
+  const prevPeriodMatchCount = useMemo(() => {
+    if (!prevPeriodInfo) return 0;
+    const periodMonths: Record<string, number[]> = {
+      '4-7月': [4, 5, 6, 7],
+      '8-11月': [8, 9, 10, 11],
+      '12-3月': [12, 1, 2, 3],
+      '7月': [4, 5, 6, 7],
+      '11月': [8, 9, 10, 11],
+      '3月': [12, 1, 2, 3]
+    };
+    const targetPeriod = prevPeriodInfo.period;
+    const months = periodMonths[targetPeriod] || periodMonths[targetPeriod.split('-')[1]] || [];
+    const matchStats = data.matchStats || [];
+    return matchStats.filter(s => {
+      if (!s.date) return false;
+      const month = new Date(s.date).getMonth() + 1;
+      return months.includes(month);
+    }).length;
+  }, [data.matchStats, prevPeriodInfo]);
 
   // 選択された期に合致するテスト結果、および直前の期に合致するテスト結果
   const currentPeriodTest = useMemo(() => {
@@ -2609,31 +2647,59 @@ const ReportView = ({
 
           {/* Match Stats Summary */}
           <div className="mb-0">
-            <h2 className="text-xl font-bold mb-6 border-l-4 border-emerald-500 pl-4">{selectedPeriod} 試合スタッツ合計</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 border-l-4 border-emerald-500 pl-4">
+              <div>
+                <h2 className="text-xl font-bold text-zinc-900">{selectedPeriod} 試合スタッツ合計</h2>
+                <div className="text-xs text-zinc-500 font-bold mt-0.5 flex flex-wrap items-center gap-2">
+                  <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                    全 {periodMatchCount} 試合の集計
+                  </span>
+                  {prevPeriodInfo && prevPeriodMatchCount > 0 && (
+                    <span className="text-zinc-400 font-medium text-[11px]">
+                      (前年同期・直前期: 全 {prevPeriodMatchCount} 試合)
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'PA外セーブ率', val: calculateRate(periodStats.paOutside.saves, periodStats.paOutside.shots), unit: '%' },
-                { label: 'PA内セーブ率', val: calculateRate(periodStats.paInside.saves, periodStats.paInside.shots), unit: '%' },
-                { label: 'ハイボール成功率', val: calculateRate(periodStats.highBall.successes, periodStats.highBall.attacks), unit: '%' },
-                { label: 'ハイボール判断ミス', val: periodStats.highBall.errors, unit: '回' },
-                { label: '1v1B成功率', val: calculateRate(periodStats.oneVsOneB.successes, periodStats.oneVsOneB.attacks), unit: '%' },
-                { label: '1v1B判断ミス', val: periodStats.oneVsOneB.errors, unit: '回' },
-                { label: 'スイーパー成功率', val: calculateRate(periodStats.sweeper.successes, periodStats.sweeper.attacks), unit: '%' },
-                { label: 'スイーパー判断ミス', val: periodStats.sweeper.errors, unit: '回' },
-                { label: 'DFへのパス成功率', val: calculateRate(periodStats.passDF.successes, periodStats.passDF.total), unit: '%' },
-                { label: 'MFへのパス成功率', val: calculateRate(periodStats.passMF.successes, periodStats.passMF.total), unit: '%' },
-                { label: 'FWへのパス成功率', val: calculateRate(periodStats.passFW.successes, periodStats.passFW.total), unit: '%' },
+                { label: 'PA外セーブ率', val: calculateRate(periodStats.paOutside.saves, periodStats.paOutside.shots), unit: '%', detail: `${periodStats.paOutside.saves}/${periodStats.paOutside.shots}本` },
+                { label: 'PA内セーブ率', val: calculateRate(periodStats.paInside.saves, periodStats.paInside.shots), unit: '%', detail: `${periodStats.paInside.saves}/${periodStats.paInside.shots}本` },
+                { label: 'ハイボール成功率', val: calculateRate(periodStats.highBall.successes, periodStats.highBall.attacks), unit: '%', detail: `${periodStats.highBall.successes}/${periodStats.highBall.attacks}回` },
+                { label: 'ハイボール判断ミス', val: periodStats.highBall.errors, unit: '回', isError: true },
+                { label: '1v1B成功率', val: calculateRate(periodStats.oneVsOneB.successes, periodStats.oneVsOneB.attacks), unit: '%', detail: `${periodStats.oneVsOneB.successes}/${periodStats.oneVsOneB.attacks}回` },
+                { label: '1v1B判断ミス', val: periodStats.oneVsOneB.errors, unit: '回', isError: true },
+                { label: 'スイーパー成功率', val: calculateRate(periodStats.sweeper.successes, periodStats.sweeper.attacks), unit: '%', detail: `${periodStats.sweeper.successes}/${periodStats.sweeper.attacks}回` },
+                { label: 'スイーパー判断ミス', val: periodStats.sweeper.errors, unit: '回', isError: true },
+                { label: 'DFへのパス成功率', val: calculateRate(periodStats.passDF.successes, periodStats.passDF.total), unit: '%', detail: `${periodStats.passDF.successes}/${periodStats.passDF.total}本` },
+                { label: 'MFへのパス成功率', val: calculateRate(periodStats.passMF.successes, periodStats.passMF.total), unit: '%', detail: `${periodStats.passMF.successes}/${periodStats.passMF.total}本` },
+                { label: 'FWへのパス成功率', val: calculateRate(periodStats.passFW.successes, periodStats.passFW.total), unit: '%', detail: `${periodStats.passFW.successes}/${periodStats.passFW.total}本` },
               ].map((s, i) => {
                 const prevVal = getPrevStatVal(s.label);
                 const isErrorMetric = s.label.includes('判断ミス');
                 return (
-                  <div key={i} className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 print-no-break">
-                    <div className="text-[10px] font-bold text-zinc-400 mb-1">{s.label}</div>
-                    <div className="text-xl font-black text-zinc-900 flex items-baseline flex-wrap">
-                      <span>{s.val === null ? '-' : s.val}</span>
-                      {s.val !== null && <span className="text-xs ml-0.5 font-normal">{s.unit}</span>}
+                  <div key={i} className={cn("p-4 rounded-xl border print-no-break space-y-1", s.isError ? "bg-rose-50/40 border-rose-100" : "bg-zinc-50 border-zinc-100")}>
+                    <div className={cn("text-[10px] font-bold", s.isError ? "text-rose-500 uppercase" : "text-zinc-400")}>{s.label}</div>
+                    <div className="text-xl font-black text-zinc-900 flex items-baseline flex-wrap gap-1">
+                      <span className={s.isError ? "text-rose-600" : ""}>{s.val === null ? '-' : s.val}</span>
+                      {s.val !== null && <span className="text-xs ml-0.5 font-normal text-zinc-500">{s.unit}</span>}
                       {prevPeriodInfo && s.val !== null && renderDiffNumWithSign(s.val, prevVal, s.unit === '%', s.unit, isErrorMetric)}
                     </div>
+                    {s.detail && (
+                      <div className="text-[9px] text-zinc-400 font-medium">({s.detail})</div>
+                    )}
+                    {s.isError && periodMatchCount > 0 && (
+                      <div className="text-[9px] text-zinc-600 font-medium pt-1 border-t border-rose-100/80 flex justify-between items-center">
+                        <span>1試合平均:</span>
+                        <span className="font-bold text-rose-700">{(s.val / periodMatchCount).toFixed(1)}回/試合</span>
+                      </div>
+                    )}
+                    {s.isError && prevPeriodInfo && prevPeriodMatchCount > 0 && prevVal !== null && (
+                      <div className="text-[8.5px] text-zinc-400 text-right">
+                        前回: {(prevVal / prevPeriodMatchCount).toFixed(1)}回/試合
+                      </div>
+                    )}
                   </div>
                 );
               })}
