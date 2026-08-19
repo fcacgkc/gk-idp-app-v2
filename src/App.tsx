@@ -1043,12 +1043,11 @@ const GoalForm = ({
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">数値目標 (パフォーマンス目標に付随)</label>
-                  <input 
-                    type="text"
+                  <textarea 
                     value={pData.metrics || ''}
                     onChange={e => updateField(label, 'metrics', e.target.value)}
-                    className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none"
-                    placeholder="例: セーブ率80%以上"
+                    className="w-full p-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500 outline-none h-20"
+                    placeholder="例: セーブ率80%以上、キック飛距離45m以上など"
                   />
                 </div>
 
@@ -2976,21 +2975,30 @@ const ReportView = ({
                       <span className="text-[10px] font-bold text-zinc-400">面談日: {pData?.interviewDate || '-'}</span>
                     </div>
                     <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         <div>
-                          <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">パフォーマンス目標</div>
-                          <div className="text-xs font-bold text-zinc-900 leading-relaxed">{pData?.performanceGoal || '-'}</div>
+                          <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">パフォーマンス目標</div>
+                          <div className="text-xs font-bold text-zinc-900 leading-relaxed break-words whitespace-pre-wrap">{pData?.performanceGoal || '-'}</div>
                         </div>
                         <div>
-                          <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">プロセス目標</div>
-                          <div className="text-xs text-zinc-600 leading-relaxed whitespace-pre-wrap">{pData?.processGoal || '-'}</div>
+                          <div className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5 flex items-center gap-1">
+                            <Target size={11} />
+                            数値目標
+                          </div>
+                          <div className="text-xs font-semibold text-emerald-800 bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100/80 break-words whitespace-pre-wrap">
+                            {pData?.metrics || '-'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">プロセス目標</div>
+                          <div className="text-xs text-zinc-600 leading-relaxed whitespace-pre-wrap break-words">{pData?.processGoal || '-'}</div>
                         </div>
                       </div>
-                      <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-100">
+                      <div className="bg-zinc-50 p-3.5 rounded-xl border border-zinc-100 flex flex-col">
                         <div className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1 flex items-center gap-2">
-                          振り返り
+                          振り返り / 面談メモ
                         </div>
-                        <div className="text-xs text-zinc-600 leading-relaxed whitespace-pre-wrap italic">
+                        <div className="text-xs text-zinc-600 leading-relaxed whitespace-pre-wrap italic flex-1 break-words">
                           {pData?.review || '未記入'}
                         </div>
                       </div>
