@@ -25,7 +25,13 @@ import {
   Database,
   Upload,
   Save,
-  RotateCcw
+  RotateCcw,
+  Sparkles,
+  Bot,
+  Copy,
+  AlertCircle,
+  PenTool,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -1846,10 +1852,23 @@ const TestResultsSection = ({ tests, onSave, profile }: { tests: TestResults[], 
                     })}
                   </div>
                   
+                  {t.aiAnalysis && (
+                    <div className="mt-4 p-4 bg-indigo-50/60 border border-indigo-150/70 rounded-xl space-y-1">
+                      <div className="text-xs font-bold text-indigo-700 flex items-center gap-1.5">
+                        <Sparkles size={13} />
+                        <span>AI分析・傾向コメント</span>
+                      </div>
+                      <p className="text-xs text-zinc-700 whitespace-pre-wrap leading-relaxed">{t.aiAnalysis}</p>
+                    </div>
+                  )}
+
                   {t.comment && (
-                    <div className="mt-4 p-4 bg-zinc-50 border border-zinc-100 rounded-xl">
-                      <div className="text-xs font-bold text-zinc-400 mb-1">振り返り・コメント</div>
-                      <p className="text-xs text-zinc-700 whitespace-pre-wrap">{t.comment}</p>
+                    <div className="mt-3 p-4 bg-zinc-50 border border-zinc-100 rounded-xl">
+                      <div className="text-xs font-bold text-zinc-500 mb-1 flex items-center gap-1.5">
+                        <PenTool size={13} className="text-emerald-600" />
+                        <span>指導者（コーチ）コメント</span>
+                      </div>
+                      <p className="text-xs text-zinc-700 whitespace-pre-wrap leading-relaxed">{t.comment}</p>
                     </div>
                   )}
                 </div>
@@ -2209,11 +2228,13 @@ const ReportView = ({
   player, 
   data, 
   onUpdateStatsComments,
+  onUpdateStatsAiAnalysis,
   onUpdateTests
 }: { 
   player: Player, 
   data: PlayerData, 
   onUpdateStatsComments: (comments: Record<string, string>) => void,
+  onUpdateStatsAiAnalysis?: (analyses: Record<string, string>) => void,
   onUpdateTests: (tests: TestResults[]) => void
 }) => {
   const [selectedGrade, setSelectedGrade] = useState(data.profile?.grade || GRADES[3]);
@@ -2234,6 +2255,23 @@ const ReportView = ({
       [currentCommentKey]: localComment
     };
     onUpdateStatsComments(updated);
+  };
+
+  const [localAiStatsAnalysis, setLocalAiStatsAnalysis] = useState('');
+  const [isGeneratingStatsAi, setIsGeneratingStatsAi] = useState(false);
+  const [statsAiError, setStatsAiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalAiStatsAnalysis(data.matchStatsAiAnalysis?.[currentCommentKey] || '');
+    setStatsAiError(null);
+  }, [currentCommentKey, data.matchStatsAiAnalysis]);
+
+  const handleSaveAiStatsAnalysis = (analysisText: string) => {
+    const updated = {
+      ...(data.matchStatsAiAnalysis || {}),
+      [currentCommentKey]: analysisText
+    };
+    onUpdateStatsAiAnalysis?.(updated);
   };
 
   const currentEval = useMemo(() => {
@@ -2437,6 +2475,23 @@ const ReportView = ({
     onUpdateTests(updatedTests);
   };
 
+  const [localAiTestAnalysis, setLocalAiTestAnalysis] = useState('');
+  const [isGeneratingTestAi, setIsGeneratingTestAi] = useState(false);
+  const [testAiError, setTestAiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalAiTestAnalysis(currentPeriodTest?.aiAnalysis || '');
+    setTestAiError(null);
+  }, [currentPeriodTest?.id, currentPeriodTest?.aiAnalysis]);
+
+  const handleSaveAiTestAnalysis = (analysisText: string) => {
+    if (!currentPeriodTest) return;
+    const updatedTests = (data.testResults || []).map(t => 
+      t.id === currentPeriodTest.id ? { ...t, aiAnalysis: analysisText } : t
+    );
+    onUpdateTests(updatedTests);
+  };
+
   const prevEval = useMemo(() => {
     if (!prevPeriodInfo) return null;
     const key = `${prevPeriodInfo.grade}_${prevPeriodInfo.period}`;
@@ -2535,6 +2590,170 @@ const ReportView = ({
     }
     
     return <span className={`text-[10px] ml-1 ${color}`}>({formatted})</span>;
+  };
+
+  const handleGenerateStatsAi = async () => {
+    setIsGeneratingStatsAi(true);
+    setStatsAiError(null);
+    try {
+      const payload = {
+        playerName: player.name,
+        grade: selectedGrade,
+        period: selectedPeriod,
+        periodMatchCount,
+        stats: {
+          paOutside: { ...periodStats.paOutside, rate: calculateRate(periodStats.paOutside.saves, periodStats.paOutside.shots) },
+          paInside: { ...periodStats.paInside, rate: calculateRate(periodStats.paInside.saves, periodStats.paInside.shots) },
+          highBall: { ...periodStats.highBall, rate: calculateRate(periodStats.highBall.successes, periodStats.highBall.attacks), avgErrors: periodMatchCount > 0 ? (periodStats.highBall.errors / periodMatchCount).toFixed(1) : '0.0' },
+          oneVsOneB: { ...periodStats.oneVsOneB, rate: calculateRate(periodStats.oneVsOneB.successes, periodStats.oneVsOneB.attacks), avgErrors: periodMatchCount > 0 ? (periodStats.oneVsOneB.errors / periodMatchCount).toFixed(1) : '0.0' },
+          sweeper: { ...periodStats.sweeper, rate: calculateRate(periodStats.sweeper.successes, periodStats.sweeper.attacks), avgErrors: periodMatchCount > 0 ? (periodStats.sweeper.errors / periodMatchCount).toFixed(1) : '0.0' },
+          passDF: { ...periodStats.passDF, rate: calculateRate(periodStats.passDF.successes, periodStats.passDF.total) },
+          passMF: { ...periodStats.passMF, rate: calculateRate(periodStats.passMF.successes, periodStats.passMF.total) },
+          passFW: { ...periodStats.passFW, rate: calculateRate(periodStats.passFW.successes, periodStats.passFW.total) },
+        },
+        prevPeriodInfo: prevPeriodInfo ? { grade: prevPeriodInfo.grade, period: prevPeriodInfo.period } : null,
+        prevPeriodMatchCount,
+        prevStats: prevPeriodStats ? {
+          paOutside: { ...prevPeriodStats.paOutside, rate: calculateRate(prevPeriodStats.paOutside.saves, prevPeriodStats.paOutside.shots) },
+          paInside: { ...prevPeriodStats.paInside, rate: calculateRate(prevPeriodStats.paInside.saves, prevPeriodStats.paInside.shots) },
+          highBall: { ...prevPeriodStats.highBall, rate: calculateRate(prevPeriodStats.highBall.successes, prevPeriodStats.highBall.attacks), avgErrors: prevPeriodMatchCount > 0 ? (prevPeriodStats.highBall.errors / prevPeriodMatchCount).toFixed(1) : '0.0' },
+          oneVsOneB: { ...prevPeriodStats.oneVsOneB, rate: calculateRate(prevPeriodStats.oneVsOneB.successes, prevPeriodStats.oneVsOneB.attacks), avgErrors: prevPeriodMatchCount > 0 ? (prevPeriodStats.oneVsOneB.errors / prevPeriodMatchCount).toFixed(1) : '0.0' },
+          sweeper: { ...prevPeriodStats.sweeper, rate: calculateRate(prevPeriodStats.sweeper.successes, prevPeriodStats.sweeper.attacks), avgErrors: prevPeriodMatchCount > 0 ? (prevPeriodStats.sweeper.errors / prevPeriodMatchCount).toFixed(1) : '0.0' },
+          passDF: { ...prevPeriodStats.passDF, rate: calculateRate(prevPeriodStats.passDF.successes, prevPeriodStats.passDF.total) },
+          passMF: { ...prevPeriodStats.passMF, rate: calculateRate(prevPeriodStats.passMF.successes, prevPeriodStats.passMF.total) },
+          passFW: { ...prevPeriodStats.passFW, rate: calculateRate(prevPeriodStats.passFW.successes, prevPeriodStats.passFW.total) },
+        } : null,
+      };
+
+      const res = await fetch('/api/ai/analyze-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.error || 'AIスタッツ分析の生成に失敗しました');
+      }
+
+      setLocalAiStatsAnalysis(resData.analysis);
+      handleSaveAiStatsAnalysis(resData.analysis);
+    } catch (err: any) {
+      setStatsAiError(err.message || 'AIスタッツ分析中にエラーが発生しました');
+    } finally {
+      setIsGeneratingStatsAi(false);
+    }
+  };
+
+  const handleInsertAiToCoachComment = () => {
+    if (!localAiStatsAnalysis) return;
+    const newComment = localComment
+      ? `${localComment}\n\n【AI分析の要点】\n${localAiStatsAnalysis}`
+      : localAiStatsAnalysis;
+    setLocalComment(newComment);
+    const updated = {
+      ...(data.matchStatsComments || {}),
+      [currentCommentKey]: newComment
+    };
+    onUpdateStatsComments(updated);
+  };
+
+  const handleGenerateTestAi = async () => {
+    if (!currentPeriodTest) return;
+    setIsGeneratingTestAi(true);
+    setTestAiError(null);
+    try {
+      const calcGridStats = (grid: number[][][]) => {
+        const totalSaves = grid.flat().reduce((acc, curr) => acc + curr[0], 0);
+        const totalShots = grid.flat().reduce((acc, curr) => acc + curr[1], 0);
+        const leftSaves = grid.reduce((acc, row) => acc + row[0][0], 0);
+        const leftShots = grid.reduce((acc, row) => acc + row[0][1], 0);
+        const centerSaves = grid.reduce((acc, row) => acc + row[1][0], 0);
+        const centerShots = grid.reduce((acc, row) => acc + row[1][1], 0);
+        const rightSaves = grid.reduce((acc, row) => acc + row[2][0], 0);
+        const rightShots = grid.reduce((acc, row) => acc + row[2][1], 0);
+        return {
+          totalRate: totalShots > 0 ? Math.round((totalSaves / totalShots) * 100) : null,
+          leftRate: leftShots > 0 ? Math.round((leftSaves / leftShots) * 100) : null,
+          centerRate: centerShots > 0 ? Math.round((centerSaves / centerShots) * 100) : null,
+          rightRate: rightShots > 0 ? Math.round((rightSaves / rightShots) * 100) : null,
+        };
+      };
+
+      let prevTestData: any = null;
+      if (prevPeriodTest) {
+        const prevShort = calcGridStats(prevPeriodTest.shootStop.short);
+        const prevLong = calcGridStats(prevPeriodTest.shootStop.long);
+        prevTestData = {
+          date: prevPeriodTest.date,
+          kick: {
+            rightAvg: calculateAvg(prevPeriodTest.kick.right),
+            rightMax: calculateMax(prevPeriodTest.kick.right),
+            leftAvg: calculateAvg(prevPeriodTest.kick.left),
+            leftMax: calculateMax(prevPeriodTest.kick.left),
+            puntAvg: calculateAvg(prevPeriodTest.kick.punt),
+            puntMax: calculateMax(prevPeriodTest.kick.punt),
+          },
+          shootStop: {
+            shortTotalRate: prevShort.totalRate,
+            shortLeftRate: prevShort.leftRate,
+            shortCenterRate: prevShort.centerRate,
+            shortRightRate: prevShort.rightRate,
+            longTotalRate: prevLong.totalRate,
+            longLeftRate: prevLong.leftRate,
+            longCenterRate: prevLong.centerRate,
+            longRightRate: prevLong.rightRate,
+          }
+        };
+      }
+
+      const payload = {
+        playerName: player.name,
+        grade: selectedGrade,
+        currentDate: currentPeriodTest.date,
+        kick: {
+          right: { avg: calculateAvg(currentPeriodTest.kick.right), max: calculateMax(currentPeriodTest.kick.right) },
+          left: { avg: calculateAvg(currentPeriodTest.kick.left), max: calculateMax(currentPeriodTest.kick.left) },
+          punt: { avg: calculateAvg(currentPeriodTest.kick.punt), max: calculateMax(currentPeriodTest.kick.punt) },
+        },
+        shootStop: {
+          short: calcGridStats(currentPeriodTest.shootStop.short),
+          long: calcGridStats(currentPeriodTest.shootStop.long),
+        },
+        prevTest: prevTestData,
+      };
+
+      const res = await fetch('/api/ai/analyze-tests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.error || 'AIテスト分析の生成に失敗しました');
+      }
+
+      setLocalAiTestAnalysis(resData.analysis);
+      handleSaveAiTestAnalysis(resData.analysis);
+    } catch (err: any) {
+      setTestAiError(err.message || 'AIテスト分析中にエラーが発生しました');
+    } finally {
+      setIsGeneratingTestAi(false);
+    }
+  };
+
+  const handleInsertAiToCoachTestComment = () => {
+    if (!localAiTestAnalysis) return;
+    const newComment = localTestComment
+      ? `${localTestComment}\n\n【AI分析の要点】\n${localAiTestAnalysis}`
+      : localAiTestAnalysis;
+    setLocalTestComment(newComment);
+    if (!currentPeriodTest) return;
+    const updatedTests = (data.testResults || []).map(t => 
+      t.id === currentPeriodTest.id ? { ...t, comment: newComment } : t
+    );
+    onUpdateTests(updatedTests);
   };
 
   const handleExportPDF = () => {
@@ -2704,22 +2923,134 @@ const ReportView = ({
               })}
             </div>
             
-            {/* Match Stats Comment Section */}
-            <div className="mt-6 bg-zinc-50 p-4 rounded-xl border border-zinc-100 print-no-break">
-              <div className="text-xs font-bold text-zinc-500 mb-2 font-sans">期ごとの試合スタッツ振り返り・コメント</div>
-              {/* 画面編集用textarea（印刷時は非表示） */}
-              <textarea
-                value={localComment}
-                onChange={(e) => setLocalComment(e.target.value)}
-                onBlur={handleSaveComment}
-                placeholder="スタッツに関する振り返り、コーチからの評価コメントなどを入力できます..."
-                className="w-full text-xs text-zinc-700 bg-white border border-zinc-200 rounded-lg p-3 min-h-[96px] focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-y print:hidden"
-              />
-              {/* 印刷・PDF出力用（改行・全文完全表示） */}
-              <div className="hidden print:block text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words bg-white p-3 rounded-lg border border-zinc-200 min-h-[40px]">
-                {localComment ? localComment : <span className="text-zinc-400 italic">未記入</span>}
+            {/* Match Stats AI Analysis & Coach Comment Section */}
+            <div className="mt-6 space-y-4 print:space-y-3">
+              {/* Gemini AI Analysis Card */}
+              <div className="bg-gradient-to-br from-indigo-50/70 via-zinc-50 to-emerald-50/50 p-4 rounded-2xl border border-indigo-150 shadow-xs print-no-break print:bg-white print:border-zinc-200">
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-600 text-white shadow-xs">
+                      <Sparkles size={14} />
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                        Gemini AI スタッツ分析・傾向
+                        {prevPeriodInfo && (
+                          <span className="text-[10px] font-normal text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-full">
+                            前回（{prevPeriodInfo.period}）と比較
+                          </span>
+                        )}
+                      </h4>
+                      <div className="text-[10px] text-zinc-500">
+                        直前期や過去の数値変化、1試合平均の判断ミス、セーブ率の推移をAIが分析
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 print:hidden">
+                    {localAiStatsAnalysis && (
+                      <button
+                        type="button"
+                        onClick={handleInsertAiToCoachComment}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        title="AIの分析内容をコーチコメント欄に引用します"
+                      >
+                        <Copy size={12} />
+                        コーチ欄に引用・反映
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={isGeneratingStatsAi}
+                      onClick={handleGenerateStatsAi}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all shadow-xs cursor-pointer",
+                        isGeneratingStatsAi 
+                          ? "bg-zinc-200 text-zinc-500 cursor-not-allowed"
+                          : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 active:scale-95"
+                      )}
+                    >
+                      {isGeneratingStatsAi ? (
+                        <>
+                          <Loader2 size={13} className="animate-spin" />
+                          <span>AI分析中...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={13} />
+                          <span>{localAiStatsAnalysis ? 'AI再分析を実行' : 'AI分析を生成'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {statsAiError && (
+                  <div className="p-3 mb-2 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2 print:hidden">
+                    <AlertCircle size={15} className="shrink-0" />
+                    <span>{statsAiError}</span>
+                  </div>
+                )}
+
+                {/* AI Analysis Display */}
+                {isGeneratingStatsAi ? (
+                  <div className="bg-white/80 p-6 rounded-xl border border-indigo-100 flex flex-col items-center justify-center space-y-2 text-zinc-500 animate-pulse print:hidden">
+                    <Sparkles size={24} className="text-indigo-500 animate-spin" />
+                    <div className="text-xs font-bold text-indigo-700">Geminiが試合スタッツを比較分析しています...</div>
+                    <div className="text-[10px] text-zinc-400">直前期とのセーブ率・判断ミス・パス配球の推移を算出中</div>
+                  </div>
+                ) : localAiStatsAnalysis ? (
+                  <div>
+                    {/* Screen View */}
+                    <div className="text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words bg-white/95 p-3.5 rounded-xl border border-indigo-100 shadow-inner font-sans print:hidden">
+                      {localAiStatsAnalysis}
+                    </div>
+                    {/* Print View */}
+                    <div className="hidden print:block text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words bg-zinc-50/50 p-3 rounded-xl border border-zinc-200">
+                      <div className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider mb-1">
+                        【AIスタッツ分析（前回比較・傾向）】
+                      </div>
+                      {localAiStatsAnalysis}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white/60 p-4 rounded-xl border border-dashed border-zinc-200 text-center text-xs text-zinc-400 print:hidden">
+                    「AI分析を生成」ボタンを押すと、Geminiが直前期（{prevPeriodInfo ? `${prevPeriodInfo.period}` : '過去'}）との変化やパフォーマンスの傾向を分析してコメントを出力します。
+                  </div>
+                )}
               </div>
-              <div className="text-[10px] text-zinc-400 text-right mt-1 print:hidden font-sans">※ 入力欄を外れる（枠外をクリックする）と自動保存されます</div>
+
+              {/* Coach Comment Section */}
+              <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-200/80 shadow-xs print-no-break print:bg-white">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-md bg-emerald-600 text-white">
+                      <PenTool size={12} />
+                    </span>
+                    <span className="text-xs font-bold text-zinc-800">指導者（コーチ）コメント・振り返り</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400 print:hidden font-sans">
+                    ※ 入力欄を外れると自動保存されます
+                  </span>
+                </div>
+                
+                {/* 画面編集用textarea（印刷時は非表示） */}
+                <textarea
+                  value={localComment}
+                  onChange={(e) => setLocalComment(e.target.value)}
+                  onBlur={handleSaveComment}
+                  placeholder="試合スタッツの数値を踏まえた指導者からの評価、良かった点、今後の改善ポイントなどを入力してください（上のAI分析を引用して追記・編集することも可能です）..."
+                  className="w-full text-xs text-zinc-800 bg-white border border-zinc-200 rounded-xl p-3.5 min-h-[96px] focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none resize-y print:hidden leading-relaxed"
+                />
+                
+                {/* 印刷・PDF出力用（改行・全文完全表示） */}
+                <div className="hidden print:block text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words bg-white p-3 rounded-xl border border-zinc-200 min-h-[40px]">
+                  <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1">
+                    【指導者（コーチ）コメント】
+                  </div>
+                  {localComment ? localComment : <span className="text-zinc-400 italic">未記入</span>}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2939,22 +3270,134 @@ const ReportView = ({
                 </div>
               </div>
               
-              {/* Test Results Comment Section */}
-              <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100 mt-6 print-no-break">
-                <div className="text-xs font-bold text-zinc-500 mb-2 font-sans">この回のテスト評価・振り返り</div>
-                {/* 画面編集用textarea（印刷時は非表示） */}
-                <textarea
-                  value={localTestComment}
-                  onChange={(e) => setLocalTestComment(e.target.value)}
-                  onBlur={handleSaveTestComment}
-                  placeholder="キックの飛距離向上や、シュートストップ各距離・コース別の推移に関する評価コメントをご記入ください..."
-                  className="w-full text-xs text-zinc-700 bg-white border border-zinc-200 rounded-lg p-3 min-h-[96px] focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-y print:hidden"
-                />
-                {/* 印刷・PDF出力用（改行・全文完全表示） */}
-                <div className="hidden print:block text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words bg-white p-3 rounded-lg border border-zinc-200 min-h-[40px]">
-                  {localTestComment ? localTestComment : <span className="text-zinc-400 italic">未記入</span>}
+              {/* Test Results AI Analysis & Coach Comment Section */}
+              <div className="mt-6 space-y-4 print:space-y-3">
+                {/* Gemini AI Test Analysis Card */}
+                <div className="bg-gradient-to-br from-indigo-50/70 via-zinc-50 to-emerald-50/50 p-4 rounded-2xl border border-indigo-150 shadow-xs print-no-break print:bg-white print:border-zinc-200">
+                  <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-600 text-white shadow-xs">
+                        <Sparkles size={14} />
+                      </span>
+                      <div>
+                        <h4 className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                          Gemini AI テスト分析・傾向
+                          {prevPeriodTest && (
+                            <span className="text-[10px] font-normal text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-full">
+                              前回（{prevPeriodTest.date}）と比較
+                            </span>
+                          )}
+                        </h4>
+                        <div className="text-[10px] text-zinc-500">
+                          キック左右飛距離の伸び、14m/19m阻止率やコース別の得手不得手をAIが比較分析
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 print:hidden">
+                      {localAiTestAnalysis && (
+                        <button
+                          type="button"
+                          onClick={handleInsertAiToCoachTestComment}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                          title="AIのテスト分析内容をコーチコメント欄に引用します"
+                        >
+                          <Copy size={12} />
+                          コーチ欄に引用・反映
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={isGeneratingTestAi}
+                        onClick={handleGenerateTestAi}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all shadow-xs cursor-pointer",
+                          isGeneratingTestAi 
+                            ? "bg-zinc-200 text-zinc-500 cursor-not-allowed"
+                            : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 active:scale-95"
+                        )}
+                      >
+                        {isGeneratingTestAi ? (
+                          <>
+                            <Loader2 size={13} className="animate-spin" />
+                            <span>AI分析中...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={13} />
+                            <span>{localAiTestAnalysis ? 'AI再分析を実行' : 'AI分析を生成'}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {testAiError && (
+                    <div className="p-3 mb-2 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2 print:hidden">
+                      <AlertCircle size={15} className="shrink-0" />
+                      <span>{testAiError}</span>
+                    </div>
+                  )}
+
+                  {/* AI Analysis Display */}
+                  {isGeneratingTestAi ? (
+                    <div className="bg-white/80 p-6 rounded-xl border border-indigo-100 flex flex-col items-center justify-center space-y-2 text-zinc-500 animate-pulse print:hidden">
+                      <Sparkles size={24} className="text-indigo-500 animate-spin" />
+                      <div className="text-xs font-bold text-indigo-700">Geminiがテスト結果を比較分析しています...</div>
+                      <div className="text-[10px] text-zinc-400">キック飛距離推移、シュートストップコース傾向を算出中</div>
+                    </div>
+                  ) : localAiTestAnalysis ? (
+                    <div>
+                      {/* Screen View */}
+                      <div className="text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words bg-white/95 p-3.5 rounded-xl border border-indigo-100 shadow-inner font-sans print:hidden">
+                        {localAiTestAnalysis}
+                      </div>
+                      {/* Print View */}
+                      <div className="hidden print:block text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words bg-zinc-50/50 p-3 rounded-xl border border-zinc-200">
+                        <div className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider mb-1">
+                          【AIテスト分析（キック・ストップ傾向）】
+                        </div>
+                        {localAiTestAnalysis}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white/60 p-4 rounded-xl border border-dashed border-zinc-200 text-center text-xs text-zinc-400 print:hidden">
+                      「AI分析を生成」ボタンを押すと、Geminiがキック飛距離やシュートストップ各距離・コース別の前回比の伸びを自動分析します。
+                    </div>
+                  )}
                 </div>
-                <div className="text-[10px] text-zinc-400 text-right mt-1 print:hidden font-sans">※ 入力欄を外れると自動保存されます</div>
+
+                {/* Coach Test Comment Section */}
+                <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-200/80 shadow-xs print-no-break print:bg-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-md bg-emerald-600 text-white">
+                        <PenTool size={12} />
+                      </span>
+                      <span className="text-xs font-bold text-zinc-800">指導者（コーチ）テスト講評・アドバイス</span>
+                    </div>
+                    <span className="text-[10px] text-zinc-400 print:hidden font-sans">
+                      ※ 入力欄を外れると自動保存されます
+                    </span>
+                  </div>
+                  
+                  {/* 画面編集用textarea（印刷時は非表示） */}
+                  <textarea
+                    value={localTestComment}
+                    onChange={(e) => setLocalTestComment(e.target.value)}
+                    onBlur={handleSaveTestComment}
+                    placeholder="キック飛距離の向上やフォームの課題、シュートストップ各距離・コース別の推移に関する評価コメントをご記入ください（上のAI分析を引用して編集することも可能です）..."
+                    className="w-full text-xs text-zinc-800 bg-white border border-zinc-200 rounded-xl p-3.5 min-h-[96px] focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none resize-y print:hidden leading-relaxed"
+                  />
+                  
+                  {/* 印刷・PDF出力用（改行・全文完全表示） */}
+                  <div className="hidden print:block text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words bg-white p-3 rounded-xl border border-zinc-200 min-h-[40px]">
+                    <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1">
+                      【指導者（コーチ）テスト講評】
+                    </div>
+                    {localTestComment ? localTestComment : <span className="text-zinc-400 italic">未記入</span>}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -3418,6 +3861,13 @@ export default function App() {
     }));
   };
 
+  const handleUpdateStatsAiAnalysis = (analyses: Record<string, string>) => {
+    setAllData(prev => ({
+      ...prev,
+      [selectedPlayerId]: { ...prev[selectedPlayerId], matchStatsAiAnalysis: analyses }
+    }));
+  };
+
   const handleLogin = () => {
     setIsAuthenticated(true);
     localStorage.setItem('coach_auth', 'true');
@@ -3549,6 +3999,7 @@ export default function App() {
                       player={currentPlayer} 
                       data={currentData} 
                       onUpdateStatsComments={handleUpdateStatsComments}
+                      onUpdateStatsAiAnalysis={handleUpdateStatsAiAnalysis}
                       onUpdateTests={handleUpdateTests}
                     />
                   </ErrorBoundary>

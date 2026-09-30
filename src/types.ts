@@ -67,6 +67,8 @@ export interface TestResults {
     long: number[][][]; // [row][col][saves, shots]
   };
   comment?: string;
+  aiAnalysis?: string;
+  aiAnalysisUpdatedAt?: string;
 }
 
 export interface PlayerProfile {
@@ -87,4 +89,6 @@ export interface PlayerData {
   matchStats: MatchStats[];
   testResults: TestResults[];
   matchStatsComments?: Record<string, string>;
+  matchStatsAiAnalysis?: Record<string, string>;
+  matchStatsAiAnalysisUpdatedAt?: Record<string, string>;
 }
