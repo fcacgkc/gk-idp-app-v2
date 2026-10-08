@@ -40,10 +40,13 @@ export interface Evaluation {
   categoryVideoUrls?: Record<Category, string>;
 }
 
+export type MatchCategory = '練習試合' | 'リーグ戦' | 'カップ戦';
+
 export interface MatchStats {
   id: string;
   date: string;
   opponent: string;
+  matchType?: MatchCategory | string;
   paOutside: { shots: number; saves: number };
   paInside: { shots: number; saves: number };
   highBall: { attacks: number; successes: number; errors: number };
@@ -71,6 +74,19 @@ export interface TestResults {
   aiAnalysisUpdatedAt?: string;
 }
 
+export interface GameReport {
+  id: string;
+  date: string;
+  opponent: string;
+  matchType?: MatchCategory | string; // 練習試合、リーグ戦、カップ戦の3区分
+  score?: string; // 例: "2 - 1", "1 - 0"
+  attackComment: string; // 攻撃の振り返り
+  defenseComment: string; // 守備の振り返り
+  generalNotes?: string; // 総括・次回への課題
+  coachName?: string; // 担当コーチ名
+  createdAt?: string;
+}
+
 export interface PlayerProfile {
   name: string;
   grade: string;
@@ -88,7 +104,10 @@ export interface PlayerData {
   evaluations: Evaluation[];
   matchStats: MatchStats[];
   testResults: TestResults[];
+  gameReports?: GameReport[];
   matchStatsComments?: Record<string, string>;
   matchStatsAiAnalysis?: Record<string, string>;
   matchStatsAiAnalysisUpdatedAt?: Record<string, string>;
+  gameReportAiAnalysis?: Record<string, string>;
+  gameReportCoachComments?: Record<string, string>;
 }

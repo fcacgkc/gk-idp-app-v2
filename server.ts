@@ -240,6 +240,156 @@ GK育成の専門コーチの視点で、以下の項目を含めて具体的か
   }
 });
 
+// POST /api/ai/analyze-game-report
+app.post('/api/ai/analyze-game-report', async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!ai) {
+      const currentKey = process.env.GEMINI_API_KEY;
+      if (currentKey) {
+        ai = new GoogleGenAI({
+          apiKey: currentKey,
+          httpOptions: {
+            headers: { 'User-Agent': 'aistudio-build' },
+          },
+        });
+      } else {
+        res.status(503).json({
+          error: 'GEMINI_API_KEYが設定されていません。AI StudioのSecretsパネルを確認してください。',
+        });
+        return;
+      }
+    }
+
+    const {
+      playerName,
+      opponent,
+      date,
+      matchType,
+      attackComment,
+      defenseComment
+    } = req.body;
+
+    const prompt = `
+以下のゴールキーパー（GK）の試合振り返り（攻撃・守備）を元に、プロのGKコーチとして建設的なアドバイスと総括コメントを作成してください。
+
+【試合情報】
+- 選手名: ${playerName || '対象選手'}
+- 対戦相手: ${opponent || '不明'}
+- 試合日: ${date || '未設定'}
+- 試合区分: ${matchType || '未設定'}
+
+【攻撃面の振り返り】
+${attackComment || '特になし'}
+
+【守備面の振り返り】
+${defenseComment || '特になし'}
+
+【指示】
+GK指導の視点から、以下の内容をコンパクトかつ具体的にまとめてください：
+1. ⚔️【攻撃面へのコーチング評価・アドバイス】（スキャン、サポート、ボールスキル、フリーマンの活用、時間を届ける等の観点も加味）
+2. 🛡️【守備面へのコーチング評価・アドバイス】（シュートストップ、1vs1対応、クロス対応、スイーパー守備、予測・準備、判断・決断、コーチング等の観点も加味）
+3. 🎯【次戦に向けた重点テーマ・推奨トレーニング】
+
+選手がポジティブに次の試合・練習に取り組める温かみと説得力のある言葉で記載してください。
+`;
+
+    const systemInstruction =
+      'あなたはジュニアユース・ユース年代のゴールキーパー（GK）育成を専門とするプロフェッショナルコーチです。攻撃（ビルドアップ・配給）と守備（ゴールキーピング・ディフェンス統制）の両面から的確なフィードバックと成長のためのアドバイスを提供します。';
+
+    const analysisText = await generateGeminiContent(ai, prompt, systemInstruction);
+    res.json({
+      analysis: analysisText,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Error generating game report analysis:', error);
+    res.status(500).json({
+      error: error?.message || 'ゲームレポートAI分析の生成中にエラーが発生しました。',
+    });
+  }
+});
+
+// POST /api/ai/analyze-period-game-reports
+app.post('/api/ai/analyze-period-game-reports', async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!ai) {
+      const currentKey = process.env.GEMINI_API_KEY;
+      if (currentKey) {
+        ai = new GoogleGenAI({
+          apiKey: currentKey,
+          httpOptions: {
+            headers: { 'User-Agent': 'aistudio-build' },
+          },
+        });
+      } else {
+        res.status(503).json({
+          error: 'GEMINI_API_KEYが設定されていません。AI StudioのSecretsパネルを確認してください。',
+        });
+        return;
+      }
+    }
+
+    const {
+      playerName,
+      grade,
+      period,
+      gameReports
+    } = req.body;
+
+    if (!Array.isArray(gameReports) || gameReports.length === 0) {
+      res.status(400).json({
+        error: '対象期間のゲームレポートが存在しません。',
+      });
+      return;
+    }
+
+    const prompt = `
+以下のゴールキーパー（GK）の対象期間（${grade || ''} ${period || ''}）における全ゲームレポート（攻撃・守備の振り返り、コーチコメント）を網羅的に分析し、選手の成長傾向・課題・強みをまとめた総合的な「期間総括レポート」を作成してください。
+
+【対象選手】: ${playerName || '対象選手'} (${grade || ''})
+【対象期間】: ${period || '未指定'}
+【対象試合数】: ${gameReports.length}試合
+
+【各試合のゲームレポート詳細】:
+${gameReports.map((gr: any, idx: number) => `
+■ 第${idx + 1}試合: ${gr.date || '日付不明'} vs ${gr.opponent || '対戦相手未設定'} [区分: ${gr.matchType || '試合'}]
+・攻撃の振り返り: ${gr.attackComment || '未入力'}
+・守備の振り返り: ${gr.defenseComment || '未入力'}
+${gr.generalNotes ? `・総括メモ: ${gr.generalNotes}` : ''}
+${gr.coachName ? `・担当コーチ: ${gr.coachName}` : ''}
+`).join('\n')}
+
+【総括分析の指示】:
+GK育成専門コーチおよびテクニカルアナリストの視点で、期間内の複数試合を通じた傾向や変化を踏まえ、以下の項目を整理して具体的かつ論理的にまとめてください：
+1. 🎯【期間全体の総括と総合評価】
+   - この期間（${gameReports.length}試合）を通じて見られたパフォーマンスの全体所感と成長度
+2. ⚔️【攻撃面の振り返り・成長傾向】
+   - スキャン、サポート、ボールスキル、フリーマンの活用、時間を届ける等の観点から評価
+3. 🛡️【守備面の振り返り・成長傾向】
+   - シュートストップ、1vs1対応、クロス対応、スイーパー守備、予測・準備、判断・決断、コーチング等の観点から評価
+4. 🌟【特に評価できるストロングポイント（期間内の顕著な成長点）】
+5. 💡【次期に向けた重点育成テーマと実践アドバイス】
+   - 今後フォーカスすべき課題と、日々の練習で意識すべき具体的なGKアクション
+
+※ 各試合の具体的な対戦相手やシーンを適宜引用し、選手自身が納得感を持って読める、熱意と温かみのあるコーチング総括を作成してください。
+`;
+
+    const systemInstruction =
+      'あなたはジュニアユース・ユース年代のゴールキーパー（GK）育成を専門とするプロフェッショナルコーチ・テクニカルアナリストです。試合ごとの攻撃・守備の振り返りを横断的に分析し、選手の持続的成長を促す説得力のある期間総括を提供します。';
+
+    const analysisText = await generateGeminiContent(ai, prompt, systemInstruction);
+    res.json({
+      analysis: analysisText,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Error generating period game reports analysis:', error);
+    res.status(500).json({
+      error: error?.message || '期間ゲームレポート総括の生成中にエラーが発生しました。',
+    });
+  }
+});
+
 // Vite middleware for dev / static for prod
 async function startServer() {
   const isProduction = process.env.NODE_ENV === 'production';

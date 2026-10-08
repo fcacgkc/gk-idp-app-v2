@@ -31,7 +31,13 @@ import {
   Copy,
   AlertCircle,
   PenTool,
-  Loader2
+  Loader2,
+  Shield,
+  Swords,
+  ClipboardList,
+  Search,
+  Trash2,
+  CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -42,9 +48,11 @@ import {
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-import { Player, PlayerData, Category, Evaluation, MatchStats, TestResults, PlayerProfile, IDPGoals } from './types';
+import { Player, PlayerData, Category, Evaluation, MatchStats, TestResults, PlayerProfile, IDPGoals, GameReport, MatchCategory } from './types';
 import { CATEGORIES, EVAL_ITEMS, PERIODS, GRADES, SCORE_LABELS, EVAL_CRITERIA } from './constants';
 import { exportToPDF } from './lib/pdfExport';
+
+const MATCH_CATEGORIES: MatchCategory[] = ['練習試合', 'リーグ戦', 'カップ戦'];
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -169,6 +177,84 @@ const DEFAULT_PROFILE: PlayerProfile = {
   dominantArm: '右',
   birthDate: '2008-05-15',
 };
+
+const DEFAULT_SAMPLE_GAME_REPORTS: GameReport[] = [
+  {
+    id: 'sample-gr-1',
+    date: '2024-05-18',
+    opponent: '市立柏高校',
+    matchType: 'カップ戦',
+    attackComment: '相手の前線ハイプレスに対し、右SBへの正確な低弾道サイドボレー配給でプレスを打開できた。DFラインとのパス交換でも慌てずにボールを保持し、フリーのボランチへ縦パスを通す好判断が見られた。後半、風下の時間帯でキックの飛距離が落ちた際に、無理にロングフィードを蹴らずショートパスで前進させる落ち着きが欲しい。',
+    defenseComment: '前半18分のPA内での1v1決定機で、前に出すぎずステイして相手の体勢が崩れた瞬間にブロッキングでセーブした対応は素晴らしい。後半の失点場面はクロスに対する被弾だったが、ニアサイドへのボールに対して声の指示出しが遅れ、CBとお見合いになった。クロス時の「キーパー！」のコールはより大きく早いタイミングで徹底すること。',
+    generalNotes: '攻守ともに判断の質が上がってきている。クロス対応時のコーチングを次戦の最重要テーマとして設定する。',
+    coachName: 'GK専任コーチ'
+  },
+  {
+    id: 'sample-gr-2',
+    date: '2024-06-08',
+    opponent: '前橋商業高校',
+    matchType: '練習試合',
+    attackComment: 'キャッチングからの素早いオーバースローで左WGへ好展開し、カウンターの起点となった。ゴールキックも左右に蹴り分けられており、狙いを持った配給ができていた。相手がプレスを緩めた時間帯にテンポを落としてチームを落ち着かせる配給の使い分けを意識したい。',
+    defenseComment: '枠内シュート4本を全て完封。特に前半終了間際のペナルティエリア外からの鋭いミドルシュートに対して、逆足でしっかり踏み切ってパンチングで外へ逃げた判断はパーフェクト。ディフェンスラインの押し上げ指示も終始的確で、被決定機を最小限に抑えられた。',
+    generalNotes: '集中力の持続とライン統制が素晴らしく、クリーンシート達成。素晴らしいゲーム運び。',
+    coachName: 'GK専任コーチ'
+  },
+  {
+    id: 'sample-gr-3',
+    date: '2024-06-22',
+    opponent: '流通経済大柏高校',
+    matchType: 'リーグ戦',
+    attackComment: '相手のハイプレスに対してCBと連携して数的優位を作り、逆サイドへのロングフィードで局面を大きく変える好プレーがあった。ビルドアップ時の立ち位置（ポジショニングの深さ）が安定していた。',
+    defenseComment: 'ペナルティエリア外への果敢な飛び出しで相手スルーパスをスイーパーとして2度クリア。失点場面はCKからの混戦だったが、こぼれ球に対する二次反応の体勢の立て直しをさらに速くしたい。',
+    generalNotes: 'リーグ戦の強度の中でスイーパー守備が光った。セットプレーの二次攻撃対応を次節の課題にする。',
+    coachName: 'GK専任コーチ'
+  }
+];
+
+const DEFAULT_SAMPLE_MATCH_STATS: MatchStats[] = [
+  {
+    id: 'sample-ms-1',
+    date: '2024-05-18',
+    opponent: '市立柏高校',
+    matchType: 'カップ戦',
+    paOutside: { shots: 4, saves: 4 },
+    paInside: { shots: 5, saves: 4 },
+    highBall: { attacks: 5, successes: 4, errors: 1 },
+    oneVsOneB: { attacks: 3, successes: 3, errors: 0 },
+    sweeper: { attacks: 2, successes: 2, errors: 0 },
+    passDF: { total: 18, successes: 17 },
+    passMF: { total: 12, successes: 10 },
+    passFW: { total: 6, successes: 4 },
+  },
+  {
+    id: 'sample-ms-2',
+    date: '2024-06-08',
+    opponent: '前橋商業高校',
+    matchType: '練習試合',
+    paOutside: { shots: 3, saves: 3 },
+    paInside: { shots: 4, saves: 4 },
+    highBall: { attacks: 4, successes: 4, errors: 0 },
+    oneVsOneB: { attacks: 2, successes: 2, errors: 0 },
+    sweeper: { attacks: 3, successes: 3, errors: 0 },
+    passDF: { total: 20, successes: 19 },
+    passMF: { total: 14, successes: 13 },
+    passFW: { total: 8, successes: 6 },
+  },
+  {
+    id: 'sample-ms-3',
+    date: '2024-06-22',
+    opponent: '流通経済大柏高校',
+    matchType: 'リーグ戦',
+    paOutside: { shots: 5, saves: 4 },
+    paInside: { shots: 6, saves: 4 },
+    highBall: { attacks: 6, successes: 5, errors: 1 },
+    oneVsOneB: { attacks: 4, successes: 3, errors: 1 },
+    sweeper: { attacks: 2, successes: 2, errors: 0 },
+    passDF: { total: 22, successes: 20 },
+    passMF: { total: 16, successes: 14 },
+    passFW: { total: 9, successes: 6 },
+  }
+];
 
 // --- Components ---
 
@@ -748,6 +834,54 @@ const Dashboard = ({ data }: { data: PlayerData }) => {
           ))}
         </div>
       </div>
+
+      {/* Recent Game Reports on Dashboard */}
+      {data.gameReports && data.gameReports.length > 0 && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100 space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-bold flex items-center gap-2 text-zinc-900">
+              <ClipboardList className="text-emerald-600" size={20} />
+              最新のGame Report（試合振り返り）
+            </h3>
+            <span className="text-xs text-zinc-400 font-bold">全 {data.gameReports.length} 試合登録済み</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {data.gameReports.slice(0, 2).map(gr => (
+              <div key={gr.id} className="p-4 rounded-xl bg-zinc-50 border border-zinc-200/80 space-y-3">
+                <div className="flex justify-between items-center border-b border-zinc-200/60 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-zinc-500 bg-white px-2 py-0.5 rounded border border-zinc-200">
+                      {gr.date}
+                    </span>
+                    <strong className="text-zinc-900 text-sm">vs {gr.opponent}</strong>
+                  </div>
+                  {gr.matchType && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {gr.matchType}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="p-2.5 bg-amber-50/60 rounded-lg border border-amber-200/70">
+                    <span className="font-bold text-[10px] text-amber-900 flex items-center gap-1 mb-0.5">
+                      <Swords size={11} className="text-amber-700" /> 攻撃の振り返り
+                    </span>
+                    <p className="text-zinc-700 line-clamp-2 leading-relaxed">{gr.attackComment || '未入力'}</p>
+                  </div>
+                  <div className="p-2.5 bg-emerald-50/60 rounded-lg border border-emerald-200/70">
+                    <span className="font-bold text-[10px] text-emerald-900 flex items-center gap-1 mb-0.5">
+                      <Shield size={11} className="text-emerald-700" /> 守備の振り返り
+                    </span>
+                    <p className="text-zinc-700 line-clamp-2 leading-relaxed">{gr.defenseComment || '未入力'}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1100,11 +1234,14 @@ const MatchStatsSection = ({ stats, onSave, profile }: { stats: MatchStats[], on
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'monthly' | 'period'>('list');
+  const [matchTypeFilter, setMatchTypeFilter] = useState<string>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const initialStat: MatchStats = {
     id: '',
     date: new Date().toISOString().split('T')[0],
     opponent: '',
+    matchType: '練習試合',
     paOutside: { shots: 0, saves: 0 },
     paInside: { shots: 0, saves: 0 },
     highBall: { attacks: 0, successes: 0, errors: 0 },
@@ -1130,7 +1267,7 @@ const MatchStatsSection = ({ stats, onSave, profile }: { stats: MatchStats[], on
     if (editingId) {
       onSave(stats.map(s => s.id === editingId ? { ...newStat, id: editingId } : s));
     } else {
-      onSave([...stats, { ...newStat, id: Math.random().toString(36).substr(2, 9) }]);
+      onSave([{ ...newStat, id: Math.random().toString(36).substr(2, 9) }, ...stats]);
     }
     setIsAdding(false);
     setEditingId(null);
@@ -1138,18 +1275,25 @@ const MatchStatsSection = ({ stats, onSave, profile }: { stats: MatchStats[], on
   };
 
   const handleEdit = (s: MatchStats) => {
-    setNewStat(s);
+    setNewStat({ ...s, matchType: s.matchType || '練習試合' });
     setEditingId(s.id);
     setIsAdding(true);
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('このデータを削除してもよろしいですか？')) {
-      onSave(stats.filter(s => s.id !== id));
-    }
+    onSave(stats.filter(s => s.id !== id));
+    setDeletingId(null);
   };
 
-  const getAggregatedStats = (filteredStats: MatchStats[]) => {
+  const filteredStats = useMemo(() => {
+    let list = stats;
+    if (matchTypeFilter !== 'all') {
+      list = list.filter(s => s.matchType === matchTypeFilter);
+    }
+    return [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  }, [stats, matchTypeFilter]);
+
+  const getAggregatedStats = (filteredGroup: MatchStats[]) => {
     const initial = {
       paOutside: { shots: 0, saves: 0 },
       paInside: { shots: 0, saves: 0 },
@@ -1161,7 +1305,7 @@ const MatchStatsSection = ({ stats, onSave, profile }: { stats: MatchStats[], on
       passFW: { total: 0, successes: 0 },
     };
 
-    return filteredStats.reduce((acc, s) => ({
+    return filteredGroup.reduce((acc, s) => ({
       paOutside: { shots: acc.paOutside.shots + (s.paOutside?.shots || 0), saves: acc.paOutside.saves + (s.paOutside?.saves || 0) },
       paInside: { shots: acc.paInside.shots + (s.paInside?.shots || 0), saves: acc.paInside.saves + (s.paInside?.saves || 0) },
       highBall: { attacks: acc.highBall.attacks + (s.highBall?.attacks || 0), successes: acc.highBall.successes + (s.highBall?.successes || 0), errors: acc.highBall.errors + (s.highBall?.errors || 0) },
@@ -1232,13 +1376,13 @@ const MatchStatsSection = ({ stats, onSave, profile }: { stats: MatchStats[], on
 
   const monthlyStats = useMemo(() => {
     const groups: Record<string, MatchStats[]> = {};
-    stats.forEach(s => {
+    filteredStats.forEach(s => {
       const month = s.date.substring(0, 7); // YYYY-MM
       if (!groups[month]) groups[month] = [];
       groups[month].push(s);
     });
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [stats]);
+  }, [filteredStats]);
 
   const periodStats = useMemo(() => {
     // Periods: 4-7 (7月), 8-11 (11月), 12-3 (3月)
@@ -1247,14 +1391,14 @@ const MatchStatsSection = ({ stats, onSave, profile }: { stats: MatchStats[], on
       '8月-11月 (11月面談期)': [],
       '12月-3月 (3月面談期)': [],
     };
-    stats.forEach(s => {
+    filteredStats.forEach(s => {
       const month = parseInt(s.date.substring(5, 7));
       if (month >= 4 && month <= 7) groups['4月-7月 (7月面談期)'].push(s);
       else if (month >= 8 && month <= 11) groups['8月-11月 (11月面談期)'].push(s);
       else groups['12月-3月 (3月面談期)'].push(s);
     });
     return Object.entries(groups);
-  }, [stats]);
+  }, [filteredStats]);
 
   return (
     <div className="space-y-6" id="match-stats">
@@ -1267,52 +1411,77 @@ const MatchStatsSection = ({ stats, onSave, profile }: { stats: MatchStats[], on
           </h3>
           <button 
             onClick={handleExportPDF}
-            className="px-3 py-2 bg-zinc-100 hover:bg-emerald-50 hover:text-emerald-600 text-zinc-600 rounded-xl transition-all flex items-center gap-2 text-xs font-bold border border-transparent hover:border-emerald-200"
+            className="px-3 py-2 bg-zinc-100 hover:bg-emerald-50 hover:text-emerald-600 text-zinc-600 rounded-xl transition-all flex items-center gap-2 text-xs font-bold border border-transparent hover:border-emerald-200 cursor-pointer"
           >
             <Download size={16} />
             PDF出力
           </button>
         </div>
-        <div className="flex gap-2 bg-zinc-100 p-1 rounded-xl">
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Match Category Filters (練習試合・リーグ戦・カップ戦) */}
+          <div className="flex items-center gap-1 bg-zinc-100 p-1 rounded-xl">
+            <span className="text-[11px] font-bold text-zinc-400 px-1.5 uppercase">区分:</span>
+            {(['all', ...MATCH_CATEGORIES] as string[]).map(type => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setMatchTypeFilter(type)}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                  matchTypeFilter === type 
+                    ? "bg-white shadow-xs text-indigo-700 font-extrabold" 
+                    : "text-zinc-500 hover:text-zinc-900"
+                )}
+              >
+                {type === 'all' ? 'すべて' : type}
+              </button>
+            ))}
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex gap-1 bg-zinc-100 p-1 rounded-xl">
+            <button 
+              onClick={() => setViewMode('list')}
+              className={cn("px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer", viewMode === 'list' ? "bg-white shadow-sm text-emerald-600" : "text-zinc-500")}
+            >
+              試合別
+            </button>
+            <button 
+              onClick={() => setViewMode('monthly')}
+              className={cn("px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer", viewMode === 'monthly' ? "bg-white shadow-sm text-emerald-600" : "text-zinc-500")}
+            >
+              月別合計
+            </button>
+            <button 
+              onClick={() => setViewMode('period')}
+              className={cn("px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer", viewMode === 'period' ? "bg-white shadow-sm text-emerald-600" : "text-zinc-500")}
+            >
+              時期別合計
+            </button>
+          </div>
+
           <button 
-            onClick={() => setViewMode('list')}
-            className={cn("px-3 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'list' ? "bg-white shadow-sm text-emerald-600" : "text-zinc-500")}
+            onClick={() => {
+              if (isAdding) {
+                setIsAdding(false);
+                setEditingId(null);
+                setNewStat(initialStat);
+              } else {
+                setIsAdding(true);
+              }
+            }}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 cursor-pointer shadow-xs hover:bg-emerald-700 active:scale-95 transition-all"
           >
-            試合別
-          </button>
-          <button 
-            onClick={() => setViewMode('monthly')}
-            className={cn("px-3 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'monthly' ? "bg-white shadow-sm text-emerald-600" : "text-zinc-500")}
-          >
-            月別合計
-          </button>
-          <button 
-            onClick={() => setViewMode('period')}
-            className={cn("px-3 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'period' ? "bg-white shadow-sm text-emerald-600" : "text-zinc-500")}
-          >
-            時期別合計
+            <Plus size={16} />
+            {editingId ? '編集をキャンセル' : '試合データを追加'}
           </button>
         </div>
-        <button 
-          onClick={() => {
-            if (isAdding) {
-              setIsAdding(false);
-              setEditingId(null);
-              setNewStat(initialStat);
-            } else {
-              setIsAdding(true);
-            }
-          }}
-          className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold flex items-center gap-2"
-        >
-          <Plus size={16} />
-          {editingId ? '編集をキャンセル' : '試合データを追加'}
-        </button>
       </div>
 
       {isAdding && (
         <div className="bg-white p-6 rounded-2xl border border-emerald-100 shadow-sm space-y-6 animate-in fade-in slide-in-from-top-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-xs font-bold text-zinc-500 uppercase">日付</label>
               <input type="date" value={newStat.date} onChange={e => setNewStat({...newStat, date: e.target.value})} className="w-full p-2 rounded-lg border border-zinc-200" />
@@ -1320,6 +1489,18 @@ const MatchStatsSection = ({ stats, onSave, profile }: { stats: MatchStats[], on
             <div className="space-y-2">
               <label className="text-xs font-bold text-zinc-500 uppercase">対戦相手</label>
               <input type="text" value={newStat.opponent} onChange={e => setNewStat({...newStat, opponent: e.target.value})} className="w-full p-2 rounded-lg border border-zinc-200" placeholder="例: 〇〇高校" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-zinc-500 uppercase">試合区分</label>
+              <select
+                value={newStat.matchType || '練習試合'}
+                onChange={e => setNewStat({...newStat, matchType: e.target.value as MatchCategory})}
+                className="w-full p-2 rounded-lg border border-zinc-200 bg-white cursor-pointer"
+              >
+                {MATCH_CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -1464,42 +1645,79 @@ const MatchStatsSection = ({ stats, onSave, profile }: { stats: MatchStats[], on
               setIsAdding(false);
               setEditingId(null);
               setNewStat(initialStat);
-            }} className="px-4 py-2 text-zinc-500 font-bold">キャンセル</button>
+            }} className="px-4 py-2 text-zinc-500 font-bold cursor-pointer">キャンセル</button>
             <SaveButton 
               onClick={handleAdd}
               label={editingId ? '更新する' : '追加する'}
-              className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold"
+              className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold cursor-pointer"
             />
           </div>
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-4">
-        {viewMode === 'list' && stats.map(s => (
-          <div key={s.id} className="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <span className="text-xs font-bold text-zinc-400 uppercase">{s.date}</span>
-                <h4 className="font-bold text-zinc-900">vs {s.opponent || '不明'}</h4>
-              </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => handleEdit(s)}
-                  className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                >
-                  <FileText size={16} />
-                </button>
-                <button 
-                  onClick={() => handleDelete(s.id)}
-                  className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                >
-                  <Plus size={16} className="rotate-45" />
-                </button>
-              </div>
+        {viewMode === 'list' && (
+          filteredStats.length === 0 ? (
+            <div className="bg-white p-8 rounded-2xl border border-dashed border-zinc-200 text-center text-zinc-400 text-sm">
+              該当する試合スタッツがありません
             </div>
-            {renderStatsGrid(s)}
-          </div>
-        ))}
+          ) : (
+            filteredStats.map(s => (
+              <div key={s.id} className="bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-zinc-400 uppercase">{s.date}</span>
+                      {s.matchType && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          {s.matchType}
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="font-bold text-zinc-900">vs {s.opponent || '不明'}</h4>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleEdit(s)}
+                      className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all cursor-pointer"
+                      title="編集"
+                    >
+                      <FileText size={16} />
+                    </button>
+                    {deletingId === s.id ? (
+                      <div className="flex items-center gap-1 bg-rose-50 p-1 rounded-xl border border-rose-200">
+                        <span className="text-[10px] font-bold text-rose-700 px-1">削除?</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(s.id)}
+                          className="px-2 py-0.5 bg-rose-600 text-white rounded text-[10px] font-bold hover:bg-rose-700 cursor-pointer"
+                        >
+                          はい
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingId(null)}
+                          className="px-2 py-0.5 bg-zinc-200 text-zinc-700 rounded text-[10px] font-bold hover:bg-zinc-300 cursor-pointer"
+                        >
+                          いいえ
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => setDeletingId(s.id)}
+                        className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                        title="削除"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {renderStatsGrid(s)}
+              </div>
+            ))
+          )
+        )}
 
         {viewMode === 'monthly' && monthlyStats.map(([month, monthStats]) => {
           const aggregated = getAggregatedStats(monthStats);
@@ -1527,6 +1745,677 @@ const MatchStatsSection = ({ stats, onSave, profile }: { stats: MatchStats[], on
           );
         })}
       </div>
+    </div>
+  );
+};
+
+// --- Game Report Section ---
+
+const GameReportSection = ({
+  reports,
+  onSave,
+  profile
+}: {
+  reports: GameReport[];
+  onSave: (reports: GameReport[]) => void;
+  profile?: PlayerProfile;
+}) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // AI Assist state
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+
+  const initialReport: GameReport = {
+    id: '',
+    date: new Date().toISOString().split('T')[0],
+    opponent: '',
+    matchType: '練習試合',
+    attackComment: '',
+    defenseComment: '',
+    generalNotes: '',
+    coachName: 'GK専任コーチ'
+  };
+
+  const [formData, setFormData] = useState<GameReport>(initialReport);
+
+  const handleExportPDF = () => {
+    exportToPDF('game-report-section', `ゲームレポート_${profile?.name || '選手'}`);
+  };
+
+  const handleOpenAdd = () => {
+    setFormData({
+      ...initialReport,
+      date: new Date().toISOString().split('T')[0]
+    });
+    setEditingId(null);
+    setFormError(null);
+    setAiSuggestion(null);
+    setAiError(null);
+    setIsAdding(true);
+  };
+
+  const handleOpenEdit = (r: GameReport) => {
+    setFormData(r);
+    setEditingId(r.id);
+    setFormError(null);
+    setAiSuggestion(null);
+    setAiError(null);
+    setIsAdding(true);
+  };
+
+  const handleCancel = () => {
+    setIsAdding(false);
+    setEditingId(null);
+    setFormData(initialReport);
+    setFormError(null);
+    setAiSuggestion(null);
+    setAiError(null);
+  };
+
+  const handleSaveReport = () => {
+    if (!formData.opponent.trim()) {
+      setFormError('対戦相手名を入力してください');
+      return;
+    }
+
+    if (editingId) {
+      onSave(reports.map(r => r.id === editingId ? { ...formData, id: editingId } : r));
+    } else {
+      const newId = 'gr-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+      onSave([{ ...formData, id: newId, createdAt: new Date().toISOString() }, ...reports]);
+    }
+    setIsAdding(false);
+    setEditingId(null);
+    setFormData(initialReport);
+    setFormError(null);
+    setAiSuggestion(null);
+  };
+
+  const handleDelete = (id: string) => {
+    onSave(reports.filter(r => r.id !== id));
+    setDeletingId(null);
+  };
+
+  const handleInsertAttackTag = (tag: string) => {
+    setFormData(prev => {
+      const current = prev.attackComment.trim();
+      const updated = current ? `${current}\n・${tag}` : `・${tag}`;
+      return { ...prev, attackComment: updated };
+    });
+  };
+
+  const handleInsertDefenseTag = (tag: string) => {
+    setFormData(prev => {
+      const current = prev.defenseComment.trim();
+      const updated = current ? `${current}\n・${tag}` : `・${tag}`;
+      return { ...prev, defenseComment: updated };
+    });
+  };
+
+  const handleGenerateAiAnalysis = async () => {
+    if (!formData.attackComment.trim() && !formData.defenseComment.trim()) {
+      setAiError('攻撃または守備の振り返りコメントを入力してからAI分析を実行してください');
+      return;
+    }
+    setIsAiGenerating(true);
+    setAiError(null);
+    try {
+      const res = await fetch('/api/ai/analyze-game-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerName: profile?.name || '選手',
+          opponent: formData.opponent || '不明',
+          date: formData.date,
+          matchType: formData.matchType,
+          attackComment: formData.attackComment,
+          defenseComment: formData.defenseComment,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'AI分析の生成に失敗しました');
+      }
+      setAiSuggestion(data.analysis);
+    } catch (err: any) {
+      setAiError(err.message || 'AI分析中にエラーが発生しました');
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  const handleQuoteAiToNotes = () => {
+    if (!aiSuggestion) return;
+    setFormData(prev => {
+      const current = prev.generalNotes?.trim() || '';
+      const addition = `【AIコーチング助言】\n${aiSuggestion}`;
+      return {
+        ...prev,
+        generalNotes: current ? `${current}\n\n${addition}` : addition
+      };
+    });
+  };
+
+  // Filtered reports
+  const filteredReports = useMemo(() => {
+    let list = [...reports];
+    if (filterType !== 'all') {
+      list = list.filter(r => r.matchType === filterType);
+    }
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      list = list.filter(r => 
+        (r.opponent && r.opponent.toLowerCase().includes(q)) ||
+        (r.attackComment && r.attackComment.toLowerCase().includes(q)) ||
+        (r.defenseComment && r.defenseComment.toLowerCase().includes(q)) ||
+        (r.generalNotes && r.generalNotes.toLowerCase().includes(q))
+      );
+    }
+    // Sort newest date first
+    return list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  }, [reports, filterType, searchTerm]);
+
+  const matchTypes: MatchCategory[] = ['練習試合', 'リーグ戦', 'カップ戦'];
+
+  return (
+    <div className="space-y-6" id="game-report-section">
+      {profile && <PrintHeader playerName={profile.name} grade={profile.grade} />}
+      
+      {/* Top Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-900">
+            <ClipboardList className="text-emerald-600" size={22} />
+            Game Report（試合レポート・振り返り）
+          </h3>
+          <p className="text-xs text-zinc-500 mt-1">
+            スタッツ同様に日付・対戦相手を記録し、攻撃面と守備面に分けてコーチの評価・コメントを管理します
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 print:hidden flex-wrap">
+          <button 
+            type="button"
+            onClick={handleExportPDF}
+            className="px-3.5 py-2 bg-zinc-100 hover:bg-emerald-50 hover:text-emerald-700 text-zinc-700 rounded-xl transition-all flex items-center gap-2 text-xs font-bold border border-zinc-200/80 hover:border-emerald-200 cursor-pointer"
+          >
+            <Download size={15} />
+            PDF出力
+          </button>
+          
+          <button 
+            type="button"
+            onClick={isAdding ? handleCancel : handleOpenAdd}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-md shadow-emerald-700/20 transition-all cursor-pointer"
+          >
+            <Plus size={16} />
+            {isAdding ? '編集を閉じる' : '新規レポートを作成'}
+          </button>
+        </div>
+      </div>
+
+      {/* Adding / Editing Form Card */}
+      {isAdding && (
+        <div className="bg-white p-6 rounded-3xl border border-emerald-200 shadow-lg space-y-6 animate-in fade-in slide-in-from-top-4 print:hidden">
+          <div className="flex justify-between items-center border-b border-zinc-100 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <h4 className="font-extrabold text-base text-zinc-900">
+                {editingId ? '試合レポートの編集' : '新規試合レポートの作成'}
+              </h4>
+            </div>
+            <span className="text-xs text-zinc-400">
+              ※ 日付・対戦相手を入力し、攻撃と守備それぞれの振り返りを記録してください
+            </span>
+          </div>
+
+          {formError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{formError}</span>
+            </div>
+          )}
+
+          {/* Basic Match Information */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-zinc-50/70 p-4 rounded-2xl border border-zinc-100">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-zinc-600 flex items-center gap-1">
+                <Calendar size={13} className="text-zinc-400" />
+                日付 <span className="text-rose-500">*</span>
+              </label>
+              <input 
+                type="date" 
+                value={formData.date} 
+                onChange={e => setFormData({ ...formData, date: e.target.value })} 
+                className="w-full px-3 py-2 text-sm bg-white rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-sans" 
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-zinc-600 flex items-center gap-1">
+                <Award size={13} className="text-zinc-400" />
+                対戦相手 <span className="text-rose-500">*</span>
+              </label>
+              <input 
+                type="text" 
+                value={formData.opponent} 
+                onChange={e => {
+                  setFormData({ ...formData, opponent: e.target.value });
+                  if (formError) setFormError(null);
+                }} 
+                className="w-full px-3 py-2 text-sm bg-white rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-sans" 
+                placeholder="例: 市立柏高校、FC東京U-15" 
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-zinc-600 flex items-center gap-1">
+                <FileText size={13} className="text-zinc-400" />
+                試合区分
+              </label>
+              <select
+                value={formData.matchType || '練習試合'}
+                onChange={e => setFormData({ ...formData, matchType: e.target.value as MatchCategory })}
+                className="w-full px-3 py-2 text-sm bg-white rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-sans cursor-pointer"
+              >
+                {matchTypes.map(mt => (
+                  <option key={mt} value={mt}>{mt}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Attack & Defense Columns */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* ⚔️ Attack Review Box */}
+            <div className="p-5 bg-gradient-to-br from-amber-50/60 to-orange-50/40 rounded-2xl border border-amber-200/80 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-600 text-white shadow-xs">
+                    <Swords size={16} />
+                  </span>
+                  <div>
+                    <h5 className="text-sm font-bold text-zinc-900">
+                      攻撃の振り返り
+                    </h5>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Template Chips for Attack */}
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold text-zinc-500">クイック入力キーワード（タップで追記）:</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'スキャン',
+                    'サポート',
+                    'ボールスキル',
+                    'フリーマンの活用',
+                    '時間を届ける'
+                  ].map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => handleInsertAttackTag(tag)}
+                      className="px-2.5 py-0.5 text-[11px] font-medium bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-md transition-colors cursor-pointer shadow-2xs"
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <textarea 
+                value={formData.attackComment} 
+                onChange={e => setFormData({ ...formData, attackComment: e.target.value })} 
+                className="w-full p-3.5 bg-white rounded-xl border border-amber-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-xs text-zinc-800 leading-relaxed min-h-[140px] resize-y" 
+                placeholder="攻撃面の振り返りを具体的に記入してください（上のキーワードをタップして追記できます）..." 
+              />
+            </div>
+
+            {/* 🛡️ Defense Review Box */}
+            <div className="p-5 bg-gradient-to-br from-emerald-50/60 to-teal-50/40 rounded-2xl border border-emerald-200/80 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-600 text-white shadow-xs">
+                    <Shield size={16} />
+                  </span>
+                  <div>
+                    <h5 className="text-sm font-bold text-zinc-900">
+                      守備の振り返り
+                    </h5>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Template Chips for Defense */}
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold text-zinc-500">クイック入力キーワード（タップで追記）:</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'シュートストップ',
+                    '1vs1対応',
+                    'クロス対応',
+                    'スイーパー守備',
+                    '予測・準備',
+                    '判断・決断',
+                    'コーチング'
+                  ].map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => handleInsertDefenseTag(tag)}
+                      className="px-2.5 py-0.5 text-[11px] font-medium bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-md transition-colors cursor-pointer shadow-2xs"
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <textarea 
+                value={formData.defenseComment} 
+                onChange={e => setFormData({ ...formData, defenseComment: e.target.value })} 
+                className="w-full p-3.5 bg-white rounded-xl border border-emerald-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-xs text-zinc-800 leading-relaxed min-h-[140px] resize-y" 
+                placeholder="守備面の振り返りを具体的に記入してください（上のキーワードをタップして追記できます）..." 
+              />
+            </div>
+          </div>
+
+          {/* General Notes & Coach Signature */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="text-xs font-bold text-zinc-700 flex items-center justify-between">
+                <span>総括・次戦への課題・重点テーマ（任意）</span>
+                <span className="text-[10px] font-normal text-zinc-400">次回の試合や練習で意識させるポイント</span>
+              </label>
+              <textarea 
+                value={formData.generalNotes || ''} 
+                onChange={e => setFormData({ ...formData, generalNotes: e.target.value })} 
+                className="w-full p-3 bg-zinc-50/50 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-xs text-zinc-800 leading-relaxed min-h-[72px] resize-y" 
+                placeholder="試合全体の総括や、次の試合・トレーニングに向けて重点的に意識させるポイント..." 
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-zinc-700">記入コーチ名</label>
+              <input 
+                type="text" 
+                value={formData.coachName || ''} 
+                onChange={e => setFormData({ ...formData, coachName: e.target.value })} 
+                className="w-full px-3 py-2 text-sm bg-white rounded-xl border border-zinc-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" 
+                placeholder="例: GK専任コーチ 佐藤" 
+              />
+              <div className="pt-2">
+                <button
+                  type="button"
+                  disabled={isAiGenerating}
+                  onClick={handleGenerateAiAnalysis}
+                  className={cn(
+                    "w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer",
+                    isAiGenerating
+                      ? "bg-zinc-200 text-zinc-500 cursor-not-allowed"
+                      : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200"
+                  )}
+                  title="入力した攻撃・守備コメントをGeminiが分析して助言を提案します"
+                >
+                  {isAiGenerating ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>AI助言を生成中...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={13} className="text-indigo-600" />
+                      <span>✨ AIで攻守コメントを推敲・助言</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Suggestion Box */}
+          {aiError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{aiError}</span>
+            </div>
+          )}
+
+          {aiSuggestion && (
+            <div className="p-4 bg-indigo-50/70 border border-indigo-200/80 rounded-2xl space-y-2 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
+                  <Bot size={15} className="text-indigo-600" />
+                  Gemini AI コーチング助言・総括提案
+                </div>
+                <button
+                  type="button"
+                  onClick={handleQuoteAiToNotes}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-white hover:bg-indigo-100 border border-indigo-200 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Copy size={11} />
+                  総括欄に引用
+                </button>
+              </div>
+              <div className="text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap bg-white/90 p-3 rounded-xl border border-indigo-100">
+                {aiSuggestion}
+              </div>
+            </div>
+          )}
+
+          {/* Form Action Buttons */}
+          <div className="flex justify-end gap-3 pt-2 border-t border-zinc-100">
+            <button 
+              type="button"
+              onClick={handleCancel} 
+              className="px-5 py-2 text-zinc-500 hover:text-zinc-800 text-sm font-bold transition-colors cursor-pointer"
+            >
+              キャンセル
+            </button>
+            <SaveButton 
+              onClick={handleSaveReport}
+              label={editingId ? 'レポートを更新する' : 'レポートを保存する'}
+              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-700/20 active:scale-95 transition-all cursor-pointer"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Filter & Search Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-xs flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 print:hidden">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">区分:</span>
+          {['all', ...matchTypes].map(type => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setFilterType(type)}
+              className={cn(
+                "px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                filterType === type 
+                  ? "bg-zinc-900 text-white shadow-xs" 
+                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+              )}
+            >
+              {type === 'all' ? 'すべて' : type}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 sm:w-60">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input 
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="対戦相手や内容で検索..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-zinc-50 rounded-xl border border-zinc-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+            />
+          </div>
+          <span className="text-xs font-bold text-zinc-500 bg-zinc-100 px-2.5 py-1.5 rounded-lg whitespace-nowrap">
+            全 {filteredReports.length} 試合
+          </span>
+        </div>
+      </div>
+
+      {/* List of Game Reports */}
+      {filteredReports.length === 0 ? (
+        <div className="bg-white p-12 rounded-3xl border border-dashed border-zinc-200 text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+            <ClipboardList size={32} />
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-extrabold text-base text-zinc-800">
+              {searchTerm || filterType !== 'all' ? '該当する試合レポートがありません' : 'まだ試合レポートが登録されていません'}
+            </h4>
+            <p className="text-xs text-zinc-400 max-w-md mx-auto">
+              試合ごとに日付・対戦相手を記録し、攻撃と守備に分けてコーチの振り返りコメントを蓄積しましょう。
+            </p>
+          </div>
+          {!isAdding && (
+            <button
+              type="button"
+              onClick={handleOpenAdd}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-emerald-700/20 transition-all cursor-pointer"
+            >
+              <Plus size={16} />
+              最初の試合レポートを作成
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredReports.map(report => (
+            <div 
+              key={report.id} 
+              className="bg-white rounded-2xl border border-zinc-200/80 shadow-xs overflow-hidden hover:shadow-md transition-shadow print-no-break print:border-zinc-300"
+            >
+              {/* Report Card Header */}
+              <div className="bg-gradient-to-r from-zinc-50 via-white to-zinc-50/80 p-4 border-b border-zinc-100 flex flex-wrap justify-between items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-xs font-mono font-bold text-zinc-500 bg-white px-2.5 py-1 rounded-lg border border-zinc-200 shadow-2xs">
+                    📅 {report.date}
+                  </span>
+                  
+                  <h4 className="text-base font-extrabold text-zinc-900 flex items-center gap-1.5">
+                    <span className="text-zinc-400 font-medium text-xs">vs</span>
+                    <span>{report.opponent || '対戦相手未設定'}</span>
+                  </h4>
+
+                  {report.matchType && (
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/70">
+                      {report.matchType}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 print:hidden">
+                  {report.coachName && (
+                    <span className="text-[11px] font-medium text-zinc-500 mr-2">
+                      担当: <strong className="text-zinc-700 font-bold">{report.coachName}</strong>
+                    </span>
+                  )}
+
+                  {deletingId === report.id ? (
+                    <div className="flex items-center gap-1 bg-rose-50 p-1 rounded-xl border border-rose-200">
+                      <span className="text-[10px] font-bold text-rose-700 px-1">削除しますか?</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(report.id)}
+                        className="px-2 py-0.5 bg-rose-600 text-white rounded text-[10px] font-bold hover:bg-rose-700 cursor-pointer"
+                      >
+                        はい
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingId(null)}
+                        className="px-2 py-0.5 bg-zinc-200 text-zinc-700 rounded text-[10px] font-bold hover:bg-zinc-300 cursor-pointer"
+                      >
+                        いいえ
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <button 
+                        type="button"
+                        onClick={() => handleOpenEdit(report)}
+                        className="p-1.5 text-zinc-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                        title="レポートを編集"
+                      >
+                        <FileText size={16} />
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setDeletingId(report.id)}
+                        className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title="レポートを削除"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Report Card Body: Attack & Defense side by side */}
+              <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* ⚔️ Attack Review Box */}
+                <div className="p-4 rounded-xl bg-amber-50/40 border border-amber-200/70 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 border-b border-amber-200/60 pb-1.5">
+                    <Swords size={14} className="text-amber-700" />
+                    <span>攻撃の振り返り</span>
+                  </div>
+                  <div className="text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words min-h-[50px]">
+                    {report.attackComment ? report.attackComment : (
+                      <span className="text-zinc-400 italic">コメント未入力</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 🛡️ Defense Review Box */}
+                <div className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-200/70 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 border-b border-emerald-200/60 pb-1.5">
+                    <Shield size={14} className="text-emerald-700" />
+                    <span>守備の振り返り</span>
+                  </div>
+                  <div className="text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words min-h-[50px]">
+                    {report.defenseComment ? report.defenseComment : (
+                      <span className="text-zinc-400 italic">コメント未入力</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* General Notes Footer (if present) */}
+              {report.generalNotes && (
+                <div className="px-5 pb-4">
+                  <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200/80 text-xs text-zinc-700 leading-relaxed space-y-1">
+                    <div className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1">
+                      <Target size={12} className="text-indigo-600" />
+                      総括・次戦への課題テーマ
+                    </div>
+                    <div className="whitespace-pre-wrap break-words text-zinc-800">
+                      {report.generalNotes}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -2229,13 +3118,17 @@ const ReportView = ({
   data, 
   onUpdateStatsComments,
   onUpdateStatsAiAnalysis,
-  onUpdateTests
+  onUpdateTests,
+  onUpdateGameReportAiAnalysis,
+  onUpdateGameReportCoachComments
 }: { 
   player: Player, 
   data: PlayerData, 
   onUpdateStatsComments: (comments: Record<string, string>) => void,
   onUpdateStatsAiAnalysis?: (analyses: Record<string, string>) => void,
-  onUpdateTests: (tests: TestResults[]) => void
+  onUpdateTests: (tests: TestResults[]) => void,
+  onUpdateGameReportAiAnalysis?: (analyses: Record<string, string>) => void,
+  onUpdateGameReportCoachComments?: (comments: Record<string, string>) => void
 }) => {
   const [selectedGrade, setSelectedGrade] = useState(data.profile?.grade || GRADES[3]);
   const [selectedPeriod, setSelectedPeriod] = useState(PERIODS[0]);
@@ -2272,6 +3165,34 @@ const ReportView = ({
       [currentCommentKey]: analysisText
     };
     onUpdateStatsAiAnalysis?.(updated);
+  };
+
+  // Game Report AI Period Summary & Coach Comments State
+  const [localGameReportAi, setLocalGameReportAi] = useState('');
+  const [isGeneratingGameReportAi, setIsGeneratingGameReportAi] = useState(false);
+  const [gameReportAiError, setGameReportAiError] = useState<string | null>(null);
+  const [localGameReportCoachComment, setLocalGameReportCoachComment] = useState('');
+
+  useEffect(() => {
+    setLocalGameReportAi(data.gameReportAiAnalysis?.[currentPeriodKey] || '');
+    setGameReportAiError(null);
+    setLocalGameReportCoachComment(data.gameReportCoachComments?.[currentPeriodKey] || '');
+  }, [currentPeriodKey, data.gameReportAiAnalysis, data.gameReportCoachComments]);
+
+  const handleSaveGameReportCoachComment = () => {
+    const updated = {
+      ...(data.gameReportCoachComments || {}),
+      [currentPeriodKey]: localGameReportCoachComment
+    };
+    onUpdateGameReportCoachComments?.(updated);
+  };
+
+  const handleSaveGameReportAi = (analysisText: string) => {
+    const updated = {
+      ...(data.gameReportAiAnalysis || {}),
+      [currentPeriodKey]: analysisText
+    };
+    onUpdateGameReportAiAnalysis?.(updated);
   };
 
   const currentEval = useMemo(() => {
@@ -2369,6 +3290,90 @@ const ReportView = ({
       passFW: { total: acc.passFW.total + (s.passFW?.total || 0), successes: acc.passFW.successes + (s.passFW?.successes || 0) },
     }), initial);
   }, [data.matchStats, selectedPeriod]);
+
+  const periodGameReports = useMemo(() => {
+    const periodMonths: Record<string, number[]> = {
+      '4-7月': [4, 5, 6, 7],
+      '8-11月': [8, 9, 10, 11],
+      '12-3月': [12, 1, 2, 3],
+      '7月': [4, 5, 6, 7],
+      '11月': [8, 9, 10, 11],
+      '3月': [12, 1, 2, 3]
+    };
+    const months = periodMonths[selectedPeriod] || [];
+    const allReports = data.gameReports || [];
+    const filtered = allReports.filter(r => {
+      if (!r.date) return false;
+      const month = new Date(r.date).getMonth() + 1;
+      return months.includes(month);
+    });
+    if (filtered.length > 0) {
+      return [...filtered].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    }
+    // If selected period is 4-7月 and sample reports exist, show them
+    if (selectedPeriod === '4-7月' && allReports.length > 0) {
+      return [...allReports].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    }
+    return [];
+  }, [data.gameReports, selectedPeriod]);
+
+  const handleGeneratePeriodGameReportAi = async () => {
+    if (periodGameReports.length === 0) {
+      setGameReportAiError('この期間のゲームレポートが存在しません');
+      return;
+    }
+    setIsGeneratingGameReportAi(true);
+    setGameReportAiError(null);
+    try {
+      const res = await fetch('/api/ai/analyze-period-game-reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerName: player.name,
+          grade: selectedGrade,
+          period: selectedPeriod,
+          gameReports: periodGameReports.map(gr => ({
+            date: gr.date,
+            opponent: gr.opponent,
+            matchType: gr.matchType,
+            attackComment: gr.attackComment,
+            defenseComment: gr.defenseComment,
+            generalNotes: gr.generalNotes,
+            coachName: gr.coachName,
+          })),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || '期間ゲームレポート総括の生成に失敗しました');
+      }
+      setLocalGameReportAi(json.analysis);
+      handleSaveGameReportAi(json.analysis);
+    } catch (err: any) {
+      setGameReportAiError(err.message || 'AI総括の生成中にエラーが発生しました');
+    } finally {
+      setIsGeneratingGameReportAi(false);
+    }
+  };
+
+  const handleQuoteAiToCoachGameComment = (mode: 'append' | 'replace') => {
+    if (!localGameReportAi) return;
+    let nextComment = '';
+    if (mode === 'replace') {
+      nextComment = localGameReportAi;
+    } else {
+      const current = localGameReportCoachComment.trim();
+      nextComment = current 
+        ? `${current}\n\n【AI総括の引用】\n${localGameReportAi}` 
+        : `【AI総括の引用】\n${localGameReportAi}`;
+    }
+    setLocalGameReportCoachComment(nextComment);
+    const updated = {
+      ...(data.gameReportCoachComments || {}),
+      [currentPeriodKey]: nextComment
+    };
+    onUpdateGameReportCoachComments?.(updated);
+  };
 
   const prevPeriodInfo = useMemo(() => {
     const periodIdx = PERIODS.indexOf(selectedPeriod);
@@ -3051,6 +4056,229 @@ const ReportView = ({
                   {localComment ? localComment : <span className="text-zinc-400 italic">未記入</span>}
                 </div>
               </div>
+
+              {/* Game Reports in this Period & AI Period Summary */}
+              <div className="mt-5 pt-5 border-t border-zinc-200/80 space-y-4 print-no-break">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-600 text-white shadow-2xs">
+                      <ClipboardList size={14} />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-black text-zinc-900 flex items-center gap-1.5">
+                        {selectedPeriod} Game Report（試合振り返り）& 期間総括
+                      </h4>
+                      <p className="text-[10px] text-zinc-500">
+                        対象期間の全 {periodGameReports.length} 試合における攻撃・守備の振り返りを横断分析
+                      </p>
+                    </div>
+                  </div>
+                  {periodGameReports.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleGeneratePeriodGameReportAi}
+                      disabled={isGeneratingGameReportAi}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold transition shadow-xs disabled:opacity-50 cursor-pointer print:hidden"
+                    >
+                      {isGeneratingGameReportAi ? (
+                        <>
+                          <Loader2 size={13} className="animate-spin" />
+                          <span>AI総括を分析中...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={13} className="text-amber-300" />
+                          <span>{localGameReportAi ? 'AI総括を再生成' : 'AI総括を生成'}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* AI Error Alert */}
+                {gameReportAiError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center gap-2 print:hidden">
+                    <AlertCircle size={15} className="shrink-0 text-rose-500" />
+                    <span>{gameReportAiError}</span>
+                  </div>
+                )}
+
+                {/* AI Period Game Report Summary Box */}
+                <div className="bg-gradient-to-br from-indigo-50/70 via-white to-purple-50/40 p-4 rounded-2xl border border-indigo-200/80 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-600 text-white">
+                        <Sparkles size={12} className="text-amber-300" />
+                      </span>
+                      <span className="text-xs font-extrabold text-indigo-950">
+                        Gemini AI 期間ゲームレポート総括（攻撃・守備の成長傾向分析）
+                      </span>
+                    </div>
+                    {localGameReportAi && (
+                      <span className="text-[10px] text-indigo-600 font-bold bg-indigo-100/70 px-2 py-0.5 rounded-full print:hidden">
+                        Gemini分析済み
+                      </span>
+                    )}
+                  </div>
+
+                  {localGameReportAi ? (
+                    <div className="space-y-3">
+                      {/* 画面表示用 */}
+                      <div className="bg-white/90 p-4 rounded-xl border border-indigo-100 text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words print:hidden shadow-2xs font-sans">
+                        {localGameReportAi}
+                      </div>
+
+                      {/* コーチコメントへの引用・追記ボタン群 */}
+                      <div className="flex items-center gap-2 flex-wrap print:hidden pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleQuoteAiToCoachGameComment('append')}
+                          className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer"
+                        >
+                          <Copy size={12} />
+                          <span>📋 コーチコメントに追記</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuoteAiToCoachGameComment('replace')}
+                          className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-300 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer"
+                        >
+                          <PenTool size={12} />
+                          <span>✏️ 全文をコーチコメント欄に引用して編集</span>
+                        </button>
+                        <span className="text-[10px] text-zinc-400 font-sans ml-auto">
+                          ※ 下のコーチ欄で自由に加筆・修正・コメント追記できます
+                        </span>
+                      </div>
+
+                      {/* 印刷・PDF用表示 */}
+                      <div className="hidden print:block text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words bg-white p-3.5 rounded-xl border border-indigo-200">
+                        <div className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider mb-1 flex items-center gap-1">
+                          <Sparkles size={11} className="text-indigo-600" />
+                          【AI期間ゲームレポート総括（攻撃・守備の成長傾向）】
+                        </div>
+                        {localGameReportAi}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white/70 p-4 rounded-xl border border-dashed border-indigo-200 text-center text-xs text-zinc-500 print:hidden space-y-1">
+                      <p className="font-bold text-indigo-900">
+                        {periodGameReports.length > 0 
+                          ? `期間内の全 ${periodGameReports.length} 試合が分析対象です`
+                          : `この期間（${selectedPeriod}）のGame Reportがまだありません`}
+                      </p>
+                      <p className="text-[11px] text-zinc-400">
+                        {periodGameReports.length > 0
+                          ? '「AI総括を生成」ボタンを押すと、各試合の攻撃・守備の振り返りを横断分析し、総合評価と次期に向けた強化テーマをまとめます。'
+                          : '「Game Report」タブで試合の振り返りを記録すると、ここでAI総括やコーチコメントを行えます。'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Coach Free Comment on Period Game Reports */}
+                <div className="bg-gradient-to-br from-emerald-50/40 via-white to-zinc-50/60 p-4 rounded-2xl border border-emerald-200/80 shadow-2xs space-y-2.5 print-no-break">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-md bg-emerald-600 text-white">
+                        <PenTool size={12} />
+                      </span>
+                      <span className="text-xs font-bold text-zinc-900">
+                        指導者（コーチ）ゲーム総括・追記コメント
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-zinc-400 print:hidden font-sans">
+                      ※ 入力欄を外れると自動保存されます
+                    </span>
+                  </div>
+
+                  {/* 画面編集用textarea（印刷時は非表示） */}
+                  <textarea
+                    value={localGameReportCoachComment}
+                    onChange={(e) => setLocalGameReportCoachComment(e.target.value)}
+                    onBlur={handleSaveGameReportCoachComment}
+                    placeholder="この期間の試合を総括した指導者からの所見や評価、良かったプレー、今後の改善テーマなどを自由に入力してください（上のAI総括を引用して編集・追記することも可能です）..."
+                    className="w-full text-xs text-zinc-800 bg-white border border-zinc-200 rounded-xl p-3.5 min-h-[100px] focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none resize-y print:hidden leading-relaxed"
+                  />
+
+                  {/* 印刷・PDF出力用 */}
+                  <div className="hidden print:block text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap break-words bg-white p-3 rounded-xl border border-zinc-200 min-h-[40px]">
+                    <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                      <PenTool size={11} className="text-emerald-700" />
+                      【指導者（コーチ）ゲーム総括・振り返りコメント】
+                    </div>
+                    {localGameReportCoachComment ? localGameReportCoachComment : <span className="text-zinc-400 italic">未記入</span>}
+                  </div>
+                </div>
+
+                {/* Individual Game Reports List for this Period */}
+                {periodGameReports.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-zinc-700">
+                        期間内の各試合詳細カード ({periodGameReports.length}試合)
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-sans print:hidden">
+                        攻撃・守備の振り返り
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {periodGameReports.map(gr => (
+                        <div key={gr.id} className="bg-zinc-50/80 p-3.5 rounded-xl border border-zinc-200/90 space-y-2.5">
+                          <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono font-bold text-zinc-600 bg-white px-2 py-0.5 rounded border border-zinc-200 text-[10.5px]">
+                                {gr.date}
+                              </span>
+                              <strong className="text-zinc-900 font-extrabold">vs {gr.opponent}</strong>
+                              {gr.matchType && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                  {gr.matchType}
+                                </span>
+                              )}
+                            </div>
+                            {gr.coachName && (
+                              <span className="text-[10px] text-zinc-400">
+                                コーチ: {gr.coachName}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            <div className="p-2.5 bg-amber-50/50 rounded-lg border border-amber-200/60">
+                              <div className="text-[10px] font-bold text-amber-900 flex items-center gap-1 mb-1">
+                                <Swords size={11} className="text-amber-700" />
+                                攻撃の振り返り
+                              </div>
+                              <div className="text-xs text-zinc-800 whitespace-pre-wrap leading-relaxed">
+                                {gr.attackComment || <span className="text-zinc-400 italic">未記入</span>}
+                              </div>
+                            </div>
+
+                            <div className="p-2.5 bg-emerald-50/50 rounded-lg border border-emerald-200/60">
+                              <div className="text-[10px] font-bold text-emerald-900 flex items-center gap-1 mb-1">
+                                <Shield size={11} className="text-emerald-700" />
+                                守備の振り返り
+                              </div>
+                              <div className="text-xs text-zinc-800 whitespace-pre-wrap leading-relaxed">
+                                {gr.defenseComment || <span className="text-zinc-400 italic">未記入</span>}
+                              </div>
+                            </div>
+                          </div>
+
+                          {gr.generalNotes && (
+                            <div className="text-xs bg-white p-2 rounded-lg border border-zinc-200 text-zinc-700">
+                              <strong className="text-[10px] text-indigo-900 block mb-0.5 font-bold">【総括・次回課題】</strong>
+                              <span className="whitespace-pre-wrap leading-relaxed">{gr.generalNotes}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -3639,7 +4867,7 @@ export default function App() {
   });
 
   const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || '');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'profile' | 'goals' | 'eval' | 'match-stats' | 'test-results' | 'report'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'profile' | 'goals' | 'eval' | 'match-stats' | 'game-report' | 'test-results' | 'report'>('dashboard');
   
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -3716,8 +4944,15 @@ export default function App() {
             videoUrl: 'https://youtube.com/watch?v=example2'
           }
         ],
-        matchStats: existing.matchStats || [],
-        testResults: existing.testResults || []
+        matchStats: (existing.matchStats && existing.matchStats.length > 0 ? existing.matchStats : (p.id === '1' ? DEFAULT_SAMPLE_MATCH_STATS : [])).map((s: MatchStats) => ({
+          ...s,
+          matchType: s.matchType === '公式戦' ? 'カップ戦' : (s.matchType || '練習試合')
+        })),
+        testResults: existing.testResults || [],
+        gameReports: (existing.gameReports && existing.gameReports.length > 0 ? existing.gameReports : (p.id === '1' ? DEFAULT_SAMPLE_GAME_REPORTS : [])).map((r: GameReport) => ({
+          ...r,
+          matchType: r.matchType === '公式戦' ? 'カップ戦' : (r.matchType || '練習試合')
+        }))
       };
     });
     return initial;
@@ -3751,7 +4986,8 @@ export default function App() {
         goals: DEFAULT_GOALS,
         evaluations: [],
         matchStats: [],
-        testResults: []
+        testResults: [],
+        gameReports: []
       }
     }));
     setSelectedPlayerId(newId);
@@ -3854,6 +5090,13 @@ export default function App() {
     }));
   };
 
+  const handleUpdateGameReports = (newReports: GameReport[]) => {
+    setAllData(prev => ({
+      ...prev,
+      [selectedPlayerId]: { ...prev[selectedPlayerId], gameReports: newReports }
+    }));
+  };
+
   const handleUpdateStatsComments = (comments: Record<string, string>) => {
     setAllData(prev => ({
       ...prev,
@@ -3865,6 +5108,20 @@ export default function App() {
     setAllData(prev => ({
       ...prev,
       [selectedPlayerId]: { ...prev[selectedPlayerId], matchStatsAiAnalysis: analyses }
+    }));
+  };
+
+  const handleUpdateGameReportAiAnalysis = (analyses: Record<string, string>) => {
+    setAllData(prev => ({
+      ...prev,
+      [selectedPlayerId]: { ...prev[selectedPlayerId], gameReportAiAnalysis: analyses }
+    }));
+  };
+
+  const handleUpdateGameReportCoachComments = (comments: Record<string, string>) => {
+    setAllData(prev => ({
+      ...prev,
+      [selectedPlayerId]: { ...prev[selectedPlayerId], gameReportCoachComments: comments }
     }));
   };
 
@@ -3911,6 +5168,7 @@ export default function App() {
                     { id: 'goals', label: 'Goals', icon: Target },
                     { id: 'eval', label: 'Evaluation', icon: ClipboardCheck },
                     { id: 'match-stats', label: 'Match Stats', icon: Activity },
+                    { id: 'game-report', label: 'Game Report', icon: ClipboardList },
                     { id: 'test-results', label: 'Test Results', icon: BarChart3 },
                     { id: 'report', label: 'Report', icon: FileText },
                   ].map(tab => (
@@ -3992,6 +5250,13 @@ export default function App() {
                   />
                 )}
                 {activeTab === 'match-stats' && currentData && <MatchStatsSection stats={currentData.matchStats || []} onSave={handleUpdateStats} profile={currentData.profile || DEFAULT_PROFILE} />}
+                {activeTab === 'game-report' && currentData && (
+                  <GameReportSection 
+                    reports={currentData.gameReports || []} 
+                    onSave={handleUpdateGameReports} 
+                    profile={currentData.profile || DEFAULT_PROFILE} 
+                  />
+                )}
                 {activeTab === 'test-results' && currentData && <TestResultsSection tests={currentData.testResults || []} onSave={handleUpdateTests} profile={currentData.profile || DEFAULT_PROFILE} />}
                 {activeTab === 'report' && currentData && (
                   <ErrorBoundary>
@@ -4001,6 +5266,8 @@ export default function App() {
                       onUpdateStatsComments={handleUpdateStatsComments}
                       onUpdateStatsAiAnalysis={handleUpdateStatsAiAnalysis}
                       onUpdateTests={handleUpdateTests}
+                      onUpdateGameReportAiAnalysis={handleUpdateGameReportAiAnalysis}
+                      onUpdateGameReportCoachComments={handleUpdateGameReportCoachComments}
                     />
                   </ErrorBoundary>
                 )}
