@@ -58,6 +58,22 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+async function parseApiJsonResponse(res: Response, fallbackError: string) {
+  const rawText = await res.text();
+  let parsed: any = null;
+  try {
+    parsed = rawText ? JSON.parse(rawText) : null;
+  } catch {
+    throw new Error(
+      `サーバーからJSON以外の応答が返されました (HTTP ${res.status}): ${rawText.slice(0, 120) || fallbackError}`
+    );
+  }
+  if (!res.ok) {
+    throw new Error(parsed?.error || fallbackError);
+  }
+  return parsed;
+}
+
 const CATEGORY_LABELS: Record<Category, string> = {
   Technical: 'テクニカル',
   Tactical: 'タクティカル',
@@ -1879,10 +1895,7 @@ const GameReportSection = ({
           defenseComment: formData.defenseComment,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'AI分析の生成に失敗しました');
-      }
+      const data = await parseApiJsonResponse(res, 'AI分析の生成に失敗しました');
       setAiSuggestion(data.analysis);
     } catch (err: any) {
       setAiError(err.message || 'AI分析中にエラーが発生しました');
@@ -3343,10 +3356,7 @@ const ReportView = ({
           })),
         }),
       });
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error || '期間ゲームレポート総括の生成に失敗しました');
-      }
+      const json = await parseApiJsonResponse(res, '期間ゲームレポート総括の生成に失敗しました');
       setLocalGameReportAi(json.analysis);
       handleSaveGameReportAi(json.analysis);
     } catch (err: any) {
@@ -3636,10 +3646,7 @@ const ReportView = ({
         body: JSON.stringify(payload),
       });
 
-      const resData = await res.json();
-      if (!res.ok) {
-        throw new Error(resData.error || 'AIスタッツ分析の生成に失敗しました');
-      }
+      const resData = await parseApiJsonResponse(res, 'AIスタッツ分析の生成に失敗しました');
 
       setLocalAiStatsAnalysis(resData.analysis);
       handleSaveAiStatsAnalysis(resData.analysis);
@@ -3734,10 +3741,7 @@ const ReportView = ({
         body: JSON.stringify(payload),
       });
 
-      const resData = await res.json();
-      if (!res.ok) {
-        throw new Error(resData.error || 'AIテスト分析の生成に失敗しました');
-      }
+      const resData = await parseApiJsonResponse(res, 'AIテスト分析の生成に失敗しました');
 
       setLocalAiTestAnalysis(resData.analysis);
       handleSaveAiTestAnalysis(resData.analysis);

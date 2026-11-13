@@ -1,7 +1,8 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -14,39 +15,53 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
-// Initialize Google GenAI SDK
-const apiKey = process.env.GEMINI_API_KEY;
+// Initialize Google GenAI SDK lazily/safely
 let ai: GoogleGenAI | null = null;
-if (apiKey) {
+function getAiClient(): GoogleGenAI | null {
+  if (ai) return ai;
+  const currentKey = process.env.GEMINI_API_KEY;
+  if (!currentKey) return null;
   ai = new GoogleGenAI({
-    apiKey: apiKey,
+    apiKey: currentKey,
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',
       },
     },
   });
+  return ai;
 }
 
 async function generateGeminiContent(aiClient: GoogleGenAI, prompt: string, systemInstruction: string): Promise<string> {
-  const candidateModels = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+  const candidates: Array<{ model: string; config: Record<string, any> }> = [
+    {
+      model: 'gemini-4-hydrogen',
+      config: {
+        systemInstruction,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      },
+    },
+    {
+      model: 'gemini-3.1-flash-lite',
+      config: {
+        systemInstruction,
+      },
+    },
+  ];
   let lastError: any = null;
 
-  for (const model of candidateModels) {
+  for (const candidate of candidates) {
     try {
       const response = await aiClient.models.generateContent({
-        model,
+        model: candidate.model,
         contents: prompt,
-        config: {
-          systemInstruction,
-          temperature: 0.7,
-        },
+        config: candidate.config,
       });
       if (response && response.text) {
         return response.text;
       }
     } catch (err: any) {
-      console.warn(`Model ${model} request failed, attempting candidate:`, err?.message || err);
+      console.warn(`Model ${candidate.model} request failed, attempting candidate:`, err?.message || err);
       lastError = err;
     }
   }
@@ -71,21 +86,12 @@ async function generateGeminiContent(aiClient: GoogleGenAI, prompt: string, syst
 // POST /api/ai/analyze-stats
 app.post('/api/ai/analyze-stats', async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!ai) {
-      const currentKey = process.env.GEMINI_API_KEY;
-      if (currentKey) {
-        ai = new GoogleGenAI({
-          apiKey: currentKey,
-          httpOptions: {
-            headers: { 'User-Agent': 'aistudio-build' },
-          },
-        });
-      } else {
-        res.status(503).json({
-          error: 'GEMINI_API_KEYが設定されていません。AI StudioのSecretsパネルを確認してください。',
-        });
-        return;
-      }
+    const aiClient = getAiClient();
+    if (!aiClient) {
+      res.status(503).json({
+        error: 'GEMINI_API_KEYが設定されていません。AI StudioのSecretsパネルを確認してください。',
+      });
+      return;
     }
 
     const {
@@ -136,7 +142,7 @@ GK育成のプロフェッショナルコーチの視点で、以下の4つの�
     const systemInstruction =
       'あなたはサッカーの育成年代（ジュニアユース・ユース）におけるトップクラスのゴールキーパー（GK）専任コーチ兼データアナリストです。スタッツの数値を深く読み解き、前回との違いや成長傾向を言語化し、選手が自信を持ちつつ次への課題に前向きに取り組めるような高品質な分析コメントを提供します。';
 
-    const analysisText = await generateGeminiContent(ai, prompt, systemInstruction);
+    const analysisText = await generateGeminiContent(aiClient, prompt, systemInstruction);
     res.json({
       analysis: analysisText,
       timestamp: new Date().toISOString(),
@@ -152,21 +158,12 @@ GK育成のプロフェッショナルコーチの視点で、以下の4つの�
 // POST /api/ai/analyze-tests
 app.post('/api/ai/analyze-tests', async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!ai) {
-      const currentKey = process.env.GEMINI_API_KEY;
-      if (currentKey) {
-        ai = new GoogleGenAI({
-          apiKey: currentKey,
-          httpOptions: {
-            headers: { 'User-Agent': 'aistudio-build' },
-          },
-        });
-      } else {
-        res.status(503).json({
-          error: 'GEMINI_API_KEYが設定されていません。AI StudioのSecretsパネルを確認してください。',
-        });
-        return;
-      }
+    const aiClient = getAiClient();
+    if (!aiClient) {
+      res.status(503).json({
+        error: 'GEMINI_API_KEYが設定されていません。AI StudioのSecretsパネルを確認してください。',
+      });
+      return;
     }
 
     const {
@@ -227,7 +224,7 @@ GK育成の専門コーチの視点で、以下の項目を含めて具体的か
     const systemInstruction =
       'あなたはGKのキックフォーム、シュートストップの動作解析、コース別阻止率のデータ分析に精通した育成指導のスペシャリストです。テスト数値の変化（前回比や左右差）を鋭く分析し、具体的で分かりやすい言葉で指導コメントを提供します。';
 
-    const analysisText = await generateGeminiContent(ai, prompt, systemInstruction);
+    const analysisText = await generateGeminiContent(aiClient, prompt, systemInstruction);
     res.json({
       analysis: analysisText,
       timestamp: new Date().toISOString(),
@@ -243,21 +240,12 @@ GK育成の専門コーチの視点で、以下の項目を含めて具体的か
 // POST /api/ai/analyze-game-report
 app.post('/api/ai/analyze-game-report', async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!ai) {
-      const currentKey = process.env.GEMINI_API_KEY;
-      if (currentKey) {
-        ai = new GoogleGenAI({
-          apiKey: currentKey,
-          httpOptions: {
-            headers: { 'User-Agent': 'aistudio-build' },
-          },
-        });
-      } else {
-        res.status(503).json({
-          error: 'GEMINI_API_KEYが設定されていません。AI StudioのSecretsパネルを確認してください。',
-        });
-        return;
-      }
+    const aiClient = getAiClient();
+    if (!aiClient) {
+      res.status(503).json({
+        error: 'GEMINI_API_KEYが設定されていません。AI StudioのSecretsパネルを確認してください。',
+      });
+      return;
     }
 
     const {
@@ -296,7 +284,7 @@ GK指導の視点から、以下の内容をコンパクトかつ具体的にま
     const systemInstruction =
       'あなたはジュニアユース・ユース年代のゴールキーパー（GK）育成を専門とするプロフェッショナルコーチです。攻撃（ビルドアップ・配給）と守備（ゴールキーピング・ディフェンス統制）の両面から的確なフィードバックと成長のためのアドバイスを提供します。';
 
-    const analysisText = await generateGeminiContent(ai, prompt, systemInstruction);
+    const analysisText = await generateGeminiContent(aiClient, prompt, systemInstruction);
     res.json({
       analysis: analysisText,
       timestamp: new Date().toISOString(),
@@ -312,21 +300,12 @@ GK指導の視点から、以下の内容をコンパクトかつ具体的にま
 // POST /api/ai/analyze-period-game-reports
 app.post('/api/ai/analyze-period-game-reports', async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!ai) {
-      const currentKey = process.env.GEMINI_API_KEY;
-      if (currentKey) {
-        ai = new GoogleGenAI({
-          apiKey: currentKey,
-          httpOptions: {
-            headers: { 'User-Agent': 'aistudio-build' },
-          },
-        });
-      } else {
-        res.status(503).json({
-          error: 'GEMINI_API_KEYが設定されていません。AI StudioのSecretsパネルを確認してください。',
-        });
-        return;
-      }
+    const aiClient = getAiClient();
+    if (!aiClient) {
+      res.status(503).json({
+        error: 'GEMINI_API_KEYが設定されていません。AI StudioのSecretsパネルを確認してください。',
+      });
+      return;
     }
 
     const {
@@ -377,7 +356,7 @@ GK育成専門コーチおよびテクニカルアナリストの視点で、期
     const systemInstruction =
       'あなたはジュニアユース・ユース年代のゴールキーパー（GK）育成を専門とするプロフェッショナルコーチ・テクニカルアナリストです。試合ごとの攻撃・守備の振り返りを横断的に分析し、選手の持続的成長を促す説得力のある期間総括を提供します。';
 
-    const analysisText = await generateGeminiContent(ai, prompt, systemInstruction);
+    const analysisText = await generateGeminiContent(aiClient, prompt, systemInstruction);
     res.json({
       analysis: analysisText,
       timestamp: new Date().toISOString(),
@@ -388,6 +367,23 @@ GK育成専門コーチおよびテクニカルアナリストの視点で、期
       error: error?.message || '期間ゲームレポート総括の生成中にエラーが発生しました。',
     });
   }
+});
+
+// Ensure unmatched /api/* routes always return JSON instead of HTML
+app.all('/api/*', (_req: Request, res: Response) => {
+  res.status(404).json({ error: 'APIエンドポイントが見つかりません。' });
+});
+
+// JSON error middleware for Express (e.g. body parser errors)
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith('/api/')) {
+    console.error('API middleware error:', err);
+    res.status(err?.status || 500).json({
+      error: err?.message || 'サーバーエラーが発生しました。',
+    });
+    return;
+  }
+  next(err);
 });
 
 // Vite middleware for dev / static for prod
